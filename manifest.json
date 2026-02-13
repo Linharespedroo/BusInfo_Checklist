@@ -1,11 +1,11 @@
 {
   "name": "Checklist Veicular",
   "short_name": "Checklist",
-  "description": "Checklist eletrônico para inspeção de veículos",
+  "description": "Checklist eletr\u00f4nico para inspe\u00e7\u00e3o de ve\u00edculos",
   "start_url": "/index.html",
   "display": "standalone",
-  "background_color": "#F5F5F5",
-  "theme_color": "#0A4D8C",
+  "background_color": "#f1f5f9",
+  "theme_color": "#1e40af",
   "orientation": "portrait",
   "icons": [
     {

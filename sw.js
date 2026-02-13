@@ -1,4 +1,4 @@
-const CACHE_NAME = "checklist-veicular-v1";
+const CACHE_NAME = "checklist-veicular-v2";
 const urlsToCache = [
   "/",
   "/index.html",
@@ -14,17 +14,14 @@ const urlsToCache = [
   "/js/camera.js",
   "/js/sync.js",
   "/js/app.js",
-  "https://unpkg.com/dexie@3.2.4/dist/dexie.js",
   "/manifest.json",
 ];
 
 self.addEventListener("install", (event) => {
-  console.log("Service Worker instalando...");
   event.waitUntil(
     caches
       .open(CACHE_NAME)
       .then((cache) => {
-        console.log("Cache aberto");
         return cache.addAll(urlsToCache);
       })
       .then(() => self.skipWaiting()),
@@ -32,7 +29,6 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  console.log("Service Worker ativado");
   event.waitUntil(
     caches
       .keys()
@@ -40,7 +36,6 @@ self.addEventListener("activate", (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME) {
-              console.log("Removendo cache antigo:", cacheName);
               return caches.delete(cacheName);
             }
           }),

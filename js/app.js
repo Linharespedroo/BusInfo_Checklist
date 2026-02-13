@@ -1,20 +1,16 @@
 // Aguardar DOM carregar
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 Iniciando aplicação...");
-
-  // Verificar se db está disponível
   if (typeof db === "undefined") {
-    console.error("❌ Banco de dados não inicializado");
+    console.error("Banco de dados nao inicializado");
     return;
   }
 
   // Registrar Service Worker
   if ("serviceWorker" in navigator) {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js");
-      console.log("✅ Service Worker registrado", registration);
+      await navigator.serviceWorker.register("/sw.js");
     } catch (error) {
-      console.warn("⚠️ Service Worker não registrado:", error);
+      console.warn("Service Worker nao registrado:", error);
     }
   }
 
@@ -23,7 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     inicializarTimer();
   }
 
-  // Carregar dados conforme página
+  // Carregar dados conforme pagina
   const pagina = window.location.pathname;
 
   if (pagina.includes("index.html") || pagina === "/") {
@@ -41,8 +37,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// Timer global
+// ========== TIMER ==========
 function inicializarTimer() {
+  const headerEl = document.getElementById("timerHeader");
+  // Hide timer on login page
+  if (
+    window.location.pathname.includes("index.html") ||
+    window.location.pathname === "/"
+  ) {
+    if (headerEl) headerEl.style.display = "none";
+    return;
+  }
+
   let tempoRestante = sessionStorage.getItem("timerChecklist");
   if (!tempoRestante) {
     tempoRestante = CONFIG?.TIMER_DURACAO || 300;
@@ -54,14 +60,14 @@ function inicializarTimer() {
   function atualizarDisplay() {
     const minutos = Math.floor(tempoRestante / 60);
     const segundos = tempoRestante % 60;
-    const display = `${minutos}:${segundos.toString().padStart(2, "0")}`;
+    const display = minutos + ":" + segundos.toString().padStart(2, "0");
 
     const timerEl = document.getElementById("timerDisplay");
     if (timerEl) timerEl.textContent = display;
     sessionStorage.setItem("timerChecklist", tempoRestante);
 
-    if (tempoRestante === 60) {
-      const header = document.querySelector(".timer-header");
+    if (tempoRestante <= 60) {
+      const header = document.querySelector(".app-header");
       if (header) header.classList.add("urgente");
     }
   }
@@ -76,54 +82,83 @@ function inicializarTimer() {
   }, 1000);
 }
 
-// LOGIN CORRIGIDO
-async function initLogin() {
-  console.log("Inicializando login...");
+// ========== FETCH HELPERS ==========
+async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
+  // Try cache first
+  const cached = await db.cache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
+  // Try Drive URL
+  try {
+    const response = await fetch(driveUrl);
+    if (response.ok) {
+      const data = await response.json();
+      await db.cache.set(cacheKey, data);
+      return data;
+    }
+  } catch (e) {
+    console.warn("Drive fetch falhou para " + cacheKey + ":", e.message);
+  }
+
+  // Fallback to local file
+  try {
+    const response = await fetch(fallbackUrl);
+    if (response.ok) {
+      const data = await response.json();
+      await db.cache.set(cacheKey, data);
+      return data;
+    }
+  } catch (e) {
+    console.warn("Fallback fetch falhou para " + cacheKey + ":", e.message);
+  }
+
+  return null;
+}
+
+// ========== LOGIN ==========
+async function initLogin() {
   const cpfInput = document.getElementById("cpf");
   const btnAcessar = document.getElementById("btnAcessar");
   const cpfFeedback = document.getElementById("cpfFeedback");
+  const offlineStatus = document.getElementById("offlineStatus");
 
-  if (!cpfInput || !btnAcessar) {
-    console.error("Elementos de login não encontrados");
-    return;
-  }
+  if (!cpfInput || !btnAcessar) return;
 
-  // Carregar motoristas
+  // Load employee data (quadro)
   let motoristasData = { cpfs: [], motoristas: [] };
 
   try {
-    // Tentar do cache primeiro
-    const cached = await db.cache.get("motoristas");
-    if (cached) {
-      motoristasData = cached;
-      console.log(
-        "Motoristas carregados do cache:",
-        motoristasData.cpfs.length,
-      );
-    } else {
-      console.log("Buscando motoristas da API...");
-      const response = await fetch(CONFIG.CPFS_URL);
-      const data = await response.json();
+    const data = await fetchDriveData(
+      CONFIG.DRIVE_QUADRO_URL,
+      CONFIG.CPFS_URL,
+      "motoristas",
+    );
+
+    if (data) {
       motoristasData = DataParser.parseMotoristas(data);
-      await db.cache.set("motoristas", motoristasData);
-      console.log("Motoristas salvos no cache:", motoristasData.cpfs.length);
+      // Cache parsed data for quick access
+      await db.cache.set("motoristas_parsed", motoristasData);
+    } else {
+      // Try parsed cache
+      const parsedCache = await db.cache.get("motoristas_parsed");
+      if (parsedCache) motoristasData = parsedCache;
     }
 
-    // Mostrar status offline se não tiver dados
-    if (motoristasData.cpfs.length === 0) {
-      document.getElementById("offlineStatus").style.display = "block";
+    if (motoristasData.cpfs.length === 0 && offlineStatus) {
+      offlineStatus.style.display = "block";
     }
   } catch (error) {
     console.error("Erro ao carregar motoristas:", error);
-    document.getElementById("offlineStatus").style.display = "block";
+    if (offlineStatus) offlineStatus.style.display = "block";
   }
 
-  // Evento de input do CPF
+  // CPF input handler
   cpfInput.addEventListener("input", (e) => {
     let value = e.target.value.replace(/\D/g, "");
 
-    // Aplicar máscara
+    // Apply mask
     if (value.length <= 11) {
       value = value.replace(/(\d{3})(\d)/, "$1.$2");
       value = value.replace(/(\d{3})(\d)/, "$1.$2");
@@ -133,23 +168,30 @@ async function initLogin() {
 
     const cpfLimpo = value.replace(/\D/g, "");
 
-    // Buscar motorista
-    const motorista = motoristasData.motoristas.find((m) => m.cpf === cpfLimpo);
+    // Find employee
+    const motorista = motoristasData.motoristas.find(
+      (m) => m.cpf === cpfLimpo,
+    );
 
     if (motorista) {
-      cpfFeedback.textContent = `✓ ${motorista.nome}`;
-      cpfFeedback.className = "status-sucesso";
+      cpfFeedback.textContent = motorista.nome || "Motorista " + cpfLimpo.slice(-4);
+      cpfFeedback.className = "feedback-success";
       btnAcessar.disabled = false;
+
+      // Store employee data
       sessionStorage.setItem("cpfMotorista", motorista.cpf);
       sessionStorage.setItem("nomeMotorista", motorista.nome);
-      sessionStorage.setItem("matriculaMotorista", motorista.matricula);
+      sessionStorage.setItem("matriculaMotorista", motorista.matricula || "");
+      sessionStorage.setItem("empresaMotorista", motorista.empresa || "");
+      sessionStorage.setItem("setorMotorista", motorista.setor || "");
     } else {
       btnAcessar.disabled = true;
       if (cpfLimpo.length === 11) {
-        cpfFeedback.textContent = "✗ CPF não autorizado";
-        cpfFeedback.className = "status-pendente";
+        cpfFeedback.textContent = "CPF nao autorizado";
+        cpfFeedback.className = "feedback-error";
       } else {
         cpfFeedback.textContent = "";
+        cpfFeedback.className = "";
       }
     }
   });
@@ -160,92 +202,113 @@ async function initLogin() {
   });
 }
 
-// Empresa e veículo
+// ========== VEHICLE SELECTION (empresa.html) ==========
 async function initEmpresa() {
-  const selectBandeira = document.getElementById("bandeira");
-  const inputPlaca = document.getElementById("placa");
+  const selectVeiculo = document.getElementById("selectVeiculo");
   const btnContinuar = document.getElementById("btnContinuar");
+  const infoEmpresa = document.getElementById("infoEmpresa");
+  const infoModelo = document.getElementById("infoModelo");
 
-  // Carregar veículos
+  // Display employee info
+  const nomeMotorista = sessionStorage.getItem("nomeMotorista") || "";
+  const matricula = sessionStorage.getItem("matriculaMotorista") || "";
+  const empresaMot = sessionStorage.getItem("empresaMotorista") || "";
+  const setorMot = sessionStorage.getItem("setorMotorista") || "";
+
+  const userNameEl = document.getElementById("userName");
+  const userMetaEl = document.getElementById("userMeta");
+
+  if (userNameEl) {
+    userNameEl.textContent =
+      (matricula ? matricula + " - " : "") + nomeMotorista;
+  }
+  if (userMetaEl) {
+    const parts = [];
+    if (empresaMot) parts.push(empresaMot);
+    if (setorMot) parts.push(setorMot);
+    userMetaEl.textContent = parts.join(" | ");
+  }
+
+  // Load vehicles
   let veiculos = [];
 
   try {
-    const cached = await db.cache.get("veiculos");
-    if (cached) {
-      veiculos = cached;
-    } else {
-      const response = await fetch(CONFIG.VEICULOS_URL);
-      const data = await response.json();
+    const data = await fetchDriveData(
+      CONFIG.DRIVE_VEICULOS_URL,
+      CONFIG.VEICULOS_URL,
+      "veiculos",
+    );
+
+    if (data) {
       veiculos = DataParser.parseVeiculos(data);
-      await db.cache.set("veiculos", veiculos);
+      await db.cache.set("veiculos_parsed", veiculos);
+    } else {
+      const parsedCache = await db.cache.get("veiculos_parsed");
+      if (parsedCache) veiculos = parsedCache;
     }
-
-    console.log(`${veiculos.length} veículos carregados`);
-
-    // Preencher datalist com placas
-    const datalist = document.getElementById("sugestoesVeiculos");
-    datalist.innerHTML = "";
-
-    // Agrupar por empresa para melhor organização
-    const cometa = veiculos.filter((v) => v.empresa === "COMETA");
-    const outros = veiculos.filter((v) => v.empresa !== "COMETA");
-
-    [...cometa, ...outros].forEach((v) => {
-      const option = document.createElement("option");
-      option.value = v.placaFormatada;
-      option.textContent = `${v.prefixo} - ${v.placaFormatada} - ${v.modelo.substring(0, 30)}...`;
-      datalist.appendChild(option);
-    });
   } catch (error) {
-    console.error("Erro ao carregar veículos:", error);
+    console.error("Erro ao carregar veiculos:", error);
   }
 
-  function validarForm() {
-    const bandeiraOk = selectBandeira.value !== "";
-    const placaOk = inputPlaca.value.length >= 7;
+  // Populate vehicle dropdown
+  if (selectVeiculo) {
+    // Sort by prefixo
+    veiculos.sort((a, b) => a.prefixo.localeCompare(b.prefixo));
 
-    if (placaOk) {
-      // Verificar se placa existe na frota
-      const veiculo = veiculos.find(
-        (v) => v.placaFormatada === inputPlaca.value.toUpperCase(),
-      );
+    veiculos.forEach((v, index) => {
+      const option = document.createElement("option");
+      option.value = index;
+      option.textContent = v.prefixo + " - " + v.placaFormatada;
+      selectVeiculo.appendChild(option);
+    });
+  }
+
+  // Vehicle selection handler
+  const vehicleInfoBox = document.getElementById("vehicleInfoBox");
+
+  if (selectVeiculo) {
+    selectVeiculo.addEventListener("change", () => {
+      const idx = selectVeiculo.value;
+      if (idx === "") {
+        if (infoEmpresa) infoEmpresa.textContent = "";
+        if (infoModelo) infoModelo.textContent = "";
+        if (vehicleInfoBox) vehicleInfoBox.classList.remove("visible");
+        btnContinuar.disabled = true;
+        return;
+      }
+
+      const veiculo = veiculos[parseInt(idx)];
+      if (veiculo) {
+        if (infoEmpresa) {
+          infoEmpresa.textContent = "Empresa: " + veiculo.empresa;
+        }
+        if (infoModelo && veiculo.modelo) {
+          infoModelo.textContent = veiculo.modelo;
+        }
+        if (vehicleInfoBox) vehicleInfoBox.classList.add("visible");
+        btnContinuar.disabled = false;
+      }
+    });
+  }
+
+  if (btnContinuar) {
+    btnContinuar.addEventListener("click", () => {
+      const idx = selectVeiculo.value;
+      const veiculo = veiculos[parseInt(idx)];
 
       if (veiculo) {
-        // Auto-select bandeira baseada no veículo
-        if (veiculo.empresa === "COMETA") {
-          selectBandeira.value = "Cometa";
-        }
-        inputPlaca.setCustomValidity("");
-      } else {
-        inputPlaca.setCustomValidity("Placa não encontrada na frota");
+        sessionStorage.setItem("bandeira", veiculo.empresa);
+        sessionStorage.setItem("placa", veiculo.placaFormatada);
+        sessionStorage.setItem("prefixo", veiculo.prefixo);
+        sessionStorage.setItem("modeloVeiculo", veiculo.modelo || "");
       }
-    }
 
-    btnContinuar.disabled = !(
-      bandeiraOk &&
-      placaOk &&
-      !inputPlaca.validationMessage
-    );
+      window.location.href = "documentos.html";
+    });
   }
-
-  selectBandeira.addEventListener("change", validarForm);
-  inputPlaca.addEventListener("input", validarForm);
-
-  btnContinuar.addEventListener("click", () => {
-    const veiculo = veiculos.find(
-      (v) => v.placaFormatada === inputPlaca.value.toUpperCase(),
-    );
-
-    sessionStorage.setItem("bandeira", selectBandeira.value);
-    sessionStorage.setItem("placa", inputPlaca.value.toUpperCase());
-    sessionStorage.setItem("prefixo", veiculo?.prefixo || "");
-    sessionStorage.setItem("modeloVeiculo", veiculo?.modelo || "");
-
-    window.location.href = "documentos.html";
-  });
 }
 
-// Documentos e fotos
+// ========== DOCUMENTOS ==========
 async function initDocumentos() {
   const btnFotoCNH = document.getElementById("btnFotoCNH");
   const btnFotoCRLV = document.getElementById("btnFotoCRLV");
@@ -260,7 +323,6 @@ async function initDocumentos() {
     btnSalvar.disabled = !(cnhNumero && crlvNumero && cnhFoto && crlvFoto);
   }
 
-  // Configurar botões de câmera
   btnFotoCNH.addEventListener("click", () => abrirCamera("cnh"));
   btnFotoCRLV.addEventListener("click", () => abrirCamera("crlv"));
 
@@ -280,12 +342,11 @@ async function initDocumentos() {
         if (tipo === "cnh") {
           cnhFoto = blob;
           document.getElementById("statusCNH").className = "status-sucesso";
-          document.getElementById("statusCNH").textContent = "✓ Foto capturada";
+          document.getElementById("statusCNH").textContent = "Foto capturada";
         } else {
           crlvFoto = blob;
           document.getElementById("statusCRLV").className = "status-sucesso";
-          document.getElementById("statusCRLV").textContent =
-            "✓ Foto capturada";
+          document.getElementById("statusCRLV").textContent = "Foto capturada";
         }
 
         cameraService.parar();
@@ -308,10 +369,12 @@ async function initDocumentos() {
     .addEventListener("input", verificarPreenchimento);
 
   btnSalvar.addEventListener("click", async () => {
-    // Salvar no IndexedDB
     const checklistId = await db.checklists.salvar({
       cpfMotorista: sessionStorage.getItem("cpfMotorista"),
+      nomeMotorista: sessionStorage.getItem("nomeMotorista"),
+      matricula: sessionStorage.getItem("matriculaMotorista"),
       placa: sessionStorage.getItem("placa"),
+      prefixo: sessionStorage.getItem("prefixo"),
       bandeira: sessionStorage.getItem("bandeira"),
       cnh: document.getElementById("cnh").value,
       crlv: document.getElementById("crlv").value,
@@ -320,7 +383,6 @@ async function initDocumentos() {
     if (cnhFoto) {
       await db.fotos.salvar(checklistId, "cnh", "frente", cnhFoto);
     }
-
     if (crlvFoto) {
       await db.fotos.salvar(checklistId, "crlv", "frente", crlvFoto);
     }
@@ -330,7 +392,7 @@ async function initDocumentos() {
   });
 }
 
-// Inspeção do veículo
+// ========== INSPECAO ==========
 async function initInspecao() {
   const checklistId = parseInt(sessionStorage.getItem("checklistId"));
   const botoesFoto = document.querySelectorAll(".btn-foto-pequeno");
@@ -344,10 +406,10 @@ async function initInspecao() {
   let fotosCapturadas = {};
   let irregularidades = [];
 
-  // Carregar irregularidades
+  // Load irregularity types
   try {
-    const irregularesJSON = (await db.cache.get("irregulares")) || [];
-    if (irregularesJSON.length === 0) {
+    const irregularesCache = await db.cache.get("irregulares");
+    if (!irregularesCache) {
       const response = await fetch(CONFIG.IRREGULARIDADES_URL);
       const data = await response.json();
       await db.cache.set("irregulares", data);
@@ -356,8 +418,8 @@ async function initInspecao() {
     console.error("Erro ao carregar irregularidades:", error);
   }
 
-  // Configurar botões de foto
-  botoesFoto.forEach((btn, index) => {
+  // Photo buttons
+  botoesFoto.forEach((btn) => {
     const item = btn.closest(".item-inspecao");
     const posicao = item.dataset.posicao;
 
@@ -373,13 +435,11 @@ async function initInspecao() {
 
         btnCapturar.onclick = async () => {
           const blob = await cameraService.capturar();
-
-          // Salvar foto
           await db.fotos.salvar(checklistId, "inspecao", posicao, blob);
 
           fotosCapturadas[posicao] = blob;
           item.classList.add("com-foto");
-          item.querySelector(".status-foto").textContent = "✓";
+          item.querySelector(".status-foto").textContent = "OK";
 
           cameraService.parar();
           modal.style.display = "none";
@@ -394,7 +454,7 @@ async function initInspecao() {
     });
   });
 
-  // Radio buttons condição
+  // Condition radio buttons
   radioIrregular.addEventListener("change", () => {
     painelIrregularidades.style.display = "block";
     carregarMenuIrregularidades();
@@ -410,12 +470,10 @@ async function initInspecao() {
     const container = document.getElementById("listaIrregularidades");
     container.innerHTML = "";
 
-    // Criar um select para cada irregularidade
     irregularidades.forEach((irr, index) => {
       adicionarLinhaIrregularidade(index, irr.posicao, irr.descricao);
     });
 
-    // Botão adicionar nova
     document.getElementById("btnAdicionarIrregularidade").onclick = () => {
       irregularidades.push({ posicao: "", descricao: "" });
       adicionarLinhaIrregularidade(irregularidades.length - 1);
@@ -431,18 +489,19 @@ async function initInspecao() {
     const container = document.getElementById("listaIrregularidades");
     const div = document.createElement("div");
     div.className = "linha-irregularidade";
-    div.innerHTML = `
-            <select class="select-posicao">
-                <option value="">Posição</option>
-                <option value="frente">Frente</option>
-                <option value="direita">Direita</option>
-                <option value="esquerda">Esquerda</option>
-                <option value="traseira">Traseira</option>
-                <option value="topo">Topo</option>
-            </select>
-            <input type="text" class="input-descricao" placeholder="Descrição" value="${descSalva}">
-            <button class="btn-remover">🗑️</button>
-        `;
+    div.innerHTML =
+      '<select class="select-posicao">' +
+      '<option value="">Posicao</option>' +
+      '<option value="frente">Frente</option>' +
+      '<option value="direita">Direita</option>' +
+      '<option value="esquerda">Esquerda</option>' +
+      '<option value="traseira">Traseira</option>' +
+      '<option value="topo">Topo</option>' +
+      "</select>" +
+      '<input type="text" class="input-descricao" placeholder="Descricao" value="' +
+      descSalva +
+      '">' +
+      '<button class="btn-remover" type="button">Remover</button>';
 
     const select = div.querySelector(".select-posicao");
     select.value = posicaoSalva;
@@ -468,7 +527,6 @@ async function initInspecao() {
   }
 
   function verificarFinalizacao() {
-    // Verificar se todas as 5 fotos foram capturadas
     const temTodasFotos = [
       "frente",
       "direita",
@@ -477,12 +535,10 @@ async function initInspecao() {
       "topo",
     ].every((pos) => fotosCapturadas[pos]);
 
-    // Verificar condição selecionada
     const condicaoSelecionada = document.querySelector(
       'input[name="condicao"]:checked',
     );
 
-    // Se for irregular, precisa ter pelo menos uma irregularidade preenchida
     let irregularidadesValidas = true;
     if (condicaoSelecionada?.value === "irregular") {
       irregularidadesValidas =
@@ -498,108 +554,157 @@ async function initInspecao() {
   }
 
   btnFinalizar.addEventListener("click", async () => {
-    // Salvar irregularidades
     for (const irr of irregularidades) {
-      await db.irregulares.add({
+      await db.irregulares.salvar({
         checklistId,
         posicao: irr.posicao,
         descricao: irr.descricao,
       });
     }
-
     window.location.href = "conclusao.html";
   });
 }
 
-// Conclusão
+// ========== CONCLUSAO ==========
 async function initConclusao() {
   const checklistId = parseInt(sessionStorage.getItem("checklistId"));
   const resumoDiv = document.getElementById("resumoDados");
 
-  // Buscar dados do checklist
   const checklist = await db.checklists.get(checklistId);
   const fotos = await db.fotos.buscarPorChecklist(checklistId);
-  const irregulares = await db.irregulares
-    .where("checklistId")
-    .equals(checklistId)
-    .toArray();
+  const irregulares = await db.irregulares.buscarPorChecklist(checklistId);
 
-  // Exibir resumo
-  resumoDiv.innerHTML = `
-        <div class="resumo-item">
-            <strong>Placa:</strong> ${checklist.placa}
-        </div>
-        <div class="resumo-item">
-            <strong>Bandeira:</strong> ${checklist.bandeira}
-        </div>
-        <div class="resumo-item">
-            <strong>Motorista:</strong> CPF ***${checklist.cpfMotorista.slice(-3)}
-        </div>
-        <div class="resumo-item">
-            <strong>Fotos:</strong> ${fotos.length} capturadas
-        </div>
-        <div class="resumo-item">
-            <strong>Irregularidades:</strong> ${irregulares.length} reportada(s)
-        </div>
-    `;
+  if (checklist && resumoDiv) {
+    const nomeMotorista = sessionStorage.getItem("nomeMotorista") || "";
+    const matricula = sessionStorage.getItem("matriculaMotorista") || "";
 
-  // Verificar conectividade
-  if (navigator.onLine) {
-    syncService.sincronizar();
-  } else {
-    syncService.registrarBackgroundSync();
+    resumoDiv.innerHTML =
+      '<div class="resumo-item"><strong>Motorista:</strong> ' +
+      (matricula ? matricula + " - " : "") +
+      nomeMotorista +
+      "</div>" +
+      '<div class="resumo-item"><strong>Prefixo / Placa:</strong> ' +
+      (checklist.prefixo || "") +
+      " / " +
+      checklist.placa +
+      "</div>" +
+      '<div class="resumo-item"><strong>Empresa:</strong> ' +
+      checklist.bandeira +
+      "</div>" +
+      '<div class="resumo-item"><strong>Fotos:</strong> ' +
+      fotos.length +
+      " capturadas</div>" +
+      '<div class="resumo-item"><strong>Irregularidades:</strong> ' +
+      irregulares.length +
+      " reportada(s)</div>";
   }
 
-  document.getElementById("btnNovoChecklist").onclick = () => {
-    sessionStorage.clear();
-    window.location.href = "index.html";
-  };
+  // Sync
+  if (typeof syncService !== "undefined") {
+    if (navigator.onLine) {
+      syncService.sincronizar();
+    } else {
+      syncService.registrarBackgroundSync();
+    }
+  }
 
-  document.getElementById("btnVerHistorico").onclick = () => {
-    window.location.href = "historico.html";
-  };
+  const btnNovo = document.getElementById("btnNovoChecklist");
+  if (btnNovo) {
+    btnNovo.onclick = () => {
+      sessionStorage.clear();
+      window.location.href = "index.html";
+    };
+  }
+
+  const btnHistorico = document.getElementById("btnVerHistorico");
+  if (btnHistorico) {
+    btnHistorico.onclick = () => {
+      window.location.href = "historico.html";
+    };
+  }
 }
 
-// Histórico
+// ========== HISTORICO ==========
 async function initHistorico() {
   const container = document.getElementById("listaChecklists");
 
-  // Buscar checklists
-  const checklists = await db.checklists
-    .orderBy("timestamp")
-    .reverse()
-    .toArray();
+  const checklists = await db.checklists.getAll();
+  // Sort by timestamp descending
+  checklists.sort((a, b) => b.timestamp - a.timestamp);
 
-  if (checklists.length === 0) {
-    container.innerHTML =
-      '<div class="vazio">Nenhum checklist encontrado</div>';
-    return;
+  function renderChecklists(list) {
+    if (list.length === 0) {
+      container.innerHTML =
+        '<div class="vazio">Nenhum checklist encontrado</div>';
+      return;
+    }
+
+    container.innerHTML = list
+      .map(
+        (c) =>
+          '<div class="item-checklist ' +
+          (c.sincronizado ? "" : "pendente") +
+          '">' +
+          '<div class="checklist-header-row">' +
+          "<strong>" +
+          (c.prefixo || "") +
+          " - " +
+          c.placa +
+          "</strong>" +
+          "<span>" +
+          new Date(c.timestamp).toLocaleDateString("pt-BR") +
+          "</span>" +
+          "</div>" +
+          '<div class="checklist-detail-row">' +
+          "<span>" +
+          c.bandeira +
+          "</span>" +
+          "<span>" +
+          (c.sincronizado ? "Sincronizado" : "Pendente") +
+          "</span>" +
+          "</div>" +
+          "</div>",
+      )
+      .join("");
   }
 
-  container.innerHTML = checklists
-    .map(
-      (c) => `
-        <div class="item-checklist ${c.sincronizado ? "" : "pendente"}">
-            <div style="display: flex; justify-content: space-between;">
-                <strong>${c.placa}</strong>
-                <span>${new Date(c.timestamp).toLocaleDateString("pt-BR")}</span>
-            </div>
-            <div style="margin-top: 8px;">
-                <span>${c.bandeira}</span>
-                <span style="float: right;">
-                    ${c.sincronizado ? "✅ Sincronizado" : "⏳ Pendente"}
-                </span>
-            </div>
-        </div>
-    `,
-    )
-    .join("");
+  renderChecklists(checklists);
 
-  document.getElementById("btnVoltar").onclick = () => {
-    window.location.href = "conclusao.html";
-  };
+  // Filter function
+  function filtrar() {
+    const buscaPlaca = (
+      document.getElementById("buscaPlaca").value || ""
+    ).toUpperCase();
+    const filtroStatus = document.getElementById("filtroStatus").value;
 
-  // Filtros
-  document.getElementById("buscaPlaca").addEventListener("input", filtrar);
-  document.getElementById("filtroStatus").addEventListener("change", filtrar);
+    let filtered = checklists;
+
+    if (buscaPlaca) {
+      filtered = filtered.filter(
+        (c) =>
+          c.placa.includes(buscaPlaca) ||
+          (c.prefixo && c.prefixo.includes(buscaPlaca)),
+      );
+    }
+
+    if (filtroStatus !== "") {
+      filtered = filtered.filter(
+        (c) => c.sincronizado === parseInt(filtroStatus),
+      );
+    }
+
+    renderChecklists(filtered);
+  }
+
+  const btnVoltar = document.getElementById("btnVoltar");
+  if (btnVoltar) {
+    btnVoltar.onclick = () => {
+      window.location.href = "index.html";
+    };
+  }
+
+  const buscaInput = document.getElementById("buscaPlaca");
+  const filtroSelect = document.getElementById("filtroStatus");
+  if (buscaInput) buscaInput.addEventListener("input", filtrar);
+  if (filtroSelect) filtroSelect.addEventListener("change", filtrar);
 }
