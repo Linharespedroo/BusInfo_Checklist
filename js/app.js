@@ -87,33 +87,47 @@ async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
   // Try cache first
   const cached = await db.cache.get(cacheKey);
   if (cached) {
+    console.log("[" + cacheKey + "] Dados carregados do cache");
     return cached;
   }
 
   // Try Drive URL
   try {
+    console.log("[" + cacheKey + "] Buscando do Drive...");
     const response = await fetch(driveUrl);
+    console.log("[" + cacheKey + "] Drive status:", response.status);
     if (response.ok) {
-      const data = await response.json();
-      await db.cache.set(cacheKey, data);
-      return data;
+      const text = await response.text();
+      // Validate that it's actually JSON (Drive may return HTML login/confirm page)
+      if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
+        const data = JSON.parse(text);
+        await db.cache.set(cacheKey, data);
+        console.log("[" + cacheKey + "] Dados do Drive carregados com sucesso");
+        return data;
+      } else {
+        console.warn("[" + cacheKey + "] Drive retornou conteudo nao-JSON");
+      }
     }
   } catch (e) {
-    console.warn("Drive fetch falhou para " + cacheKey + ":", e.message);
+    console.warn("[" + cacheKey + "] Drive fetch falhou:", e.message);
   }
 
   // Fallback to local file
   try {
+    console.log("[" + cacheKey + "] Buscando arquivo local:", fallbackUrl);
     const response = await fetch(fallbackUrl);
+    console.log("[" + cacheKey + "] Local status:", response.status);
     if (response.ok) {
       const data = await response.json();
       await db.cache.set(cacheKey, data);
+      console.log("[" + cacheKey + "] Dados locais carregados com sucesso");
       return data;
     }
   } catch (e) {
-    console.warn("Fallback fetch falhou para " + cacheKey + ":", e.message);
+    console.warn("[" + cacheKey + "] Fallback fetch falhou:", e.message);
   }
 
+  console.error("[" + cacheKey + "] Nenhuma fonte de dados disponivel");
   return null;
 }
 
@@ -130,6 +144,9 @@ async function initLogin() {
   let motoristasData = { cpfs: [], motoristas: [] };
 
   try {
+    // Clear stale cache to force fresh load (remove after debugging)
+    // await db.cache.clear("motoristas");
+
     const data = await fetchDriveData(
       CONFIG.DRIVE_QUADRO_URL,
       CONFIG.CPFS_URL,
@@ -138,16 +155,53 @@ async function initLogin() {
 
     if (data) {
       motoristasData = DataParser.parseMotoristas(data);
-      // Cache parsed data for quick access
-      await db.cache.set("motoristas_parsed", motoristasData);
+      console.log(
+        "[Login] Motoristas parsed:",
+        motoristasData.motoristas.length,
+        "registros",
+      );
+
+      // If Drive returned something but parser found nothing, try local
+      if (motoristasData.motoristas.length === 0) {
+        console.warn("[Login] Drive data nao gerou motoristas, tentando local...");
+        await db.cache.clear("motoristas");
+        try {
+          const localResp = await fetch(CONFIG.CPFS_URL);
+          if (localResp.ok) {
+            const localData = await localResp.json();
+            motoristasData = DataParser.parseMotoristas(localData);
+            console.log(
+              "[Login] Motoristas do local:",
+              motoristasData.motoristas.length,
+            );
+          }
+        } catch (e) {
+          console.warn("[Login] Local fallback tambem falhou:", e.message);
+        }
+      }
+
+      if (motoristasData.motoristas.length > 0) {
+        await db.cache.set("motoristas_parsed", motoristasData);
+      }
     } else {
       // Try parsed cache
       const parsedCache = await db.cache.get("motoristas_parsed");
-      if (parsedCache) motoristasData = parsedCache;
+      if (parsedCache) {
+        motoristasData = parsedCache;
+        console.log("[Login] Usando cache parsed:", motoristasData.motoristas.length);
+      }
     }
 
     if (motoristasData.cpfs.length === 0 && offlineStatus) {
       offlineStatus.style.display = "block";
+    }
+
+    // Log first few CPFs for debugging
+    if (motoristasData.motoristas.length > 0) {
+      console.log(
+        "[Login] Primeiros CPFs disponiveis:",
+        motoristasData.motoristas.slice(0, 3).map((m) => m.cpf),
+      );
     }
   } catch (error) {
     console.error("Erro ao carregar motoristas:", error);
