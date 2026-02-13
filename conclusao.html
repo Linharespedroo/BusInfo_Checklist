@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concluído - Checklist Veicular</title>
+    <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+    <div class="timer-header">
+        <span>⏱️</span>
+        <span id="timerDisplay">3:30</span>
+    </div>
+
+    <div class="container">
+        <div class="card sucesso">
+            <div class="icone-sucesso">✅</div>
+            <h1>Checklist Concluído!</h1>
+            
+            <div class="resumo-checklist">
+                <h3>📋 Resumo da Inspeção</h3>
+                
+                <div id="resumoDados">
+                    <p>Carregando...</p>
+                </div>
+
+                <div id="statusSincronizacao" class="status-offline">
+                    📶 Offline - Aguardando conexão
+                </div>
+            </div>
+
+            <div class="botoes-acao">
+                <button id="btnNovoChecklist" class="btn-primary">➕ Novo Checklist</button>
+                <button id="btnVerHistorico" class="btn-secundario">📅 Ver Histórico</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

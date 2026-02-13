@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspeção - Checklist Veicular</title>
+    <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+    <div class="timer-header">
+        <span>⏱️</span>
+        <span id="timerDisplay">4:00</span>
+    </div>
+
+    <div class="container">
+        <div class="progresso">
+            <span>Etapa 3/4</span>
+        </div>
+
+        <div class="card">
+            <h2>🔍 Inspeção do Veículo</h2>
+            
+            <div class="grid-inspecao">
+                <div class="item-inspecao" data-posicao="frente">
+                    <div class="icone-posicao">⬆️</div>
+                    <span>Frente</span>
+                    <button class="btn-foto-pequeno">📸</button>
+                    <span class="status-foto"></span>
+                </div>
+                <div class="item-inspecao" data-posicao="direita">
+                    <div class="icone-posicao">➡️</div>
+                    <span>Direita</span>
+                    <button class="btn-foto-pequeno">📸</button>
+                    <span class="status-foto"></span>
+                </div>
+                <div class="item-inspecao" data-posicao="esquerda">
+                    <div class="icone-posicao">⬅️</div>
+                    <span>Esquerda</span>
+                    <button class="btn-foto-pequeno">📸</button>
+                    <span class="status-foto"></span>
+                </div>
+                <div class="item-inspecao" data-posicao="traseira">
+                    <div class="icone-posicao">⬇️</div>
+                    <span>Traseira</span>
+                    <button class="btn-foto-pequeno">📸</button>
+                    <span class="status-foto"></span>
+                </div>
+                <div class="item-inspecao" data-posicao="topo">
+                    <div class="icone-posicao">🔼</div>
+                    <span>Topo</span>
+                    <button class="btn-foto-pequeno">📸</button>
+                    <span class="status-foto"></span>
+                </div>
+            </div>
+
+            <div class="avaliacao-veiculo">
+                <h3>Condições do Veículo</h3>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="condicao" value="regular"> ✅ Regular
+                    </label>
+                    <label>
+                        <input type="radio" name="condicao" value="irregular"> ⚠️ Irregularidades
+                    </label>
+                </div>
+            </div>
+
+            <div id="painelIrregularidades" style="display: none;">
+                <h4>Registrar Irregularidades</h4>
+                <div id="listaIrregularidades"></div>
+                <button id="btnAdicionarIrregularidade" class="btn-secundario">+ Adicionar Irregularidade</button>
+            </div>
+
+            <button id="btnFinalizarInspecao" class="btn-primary" disabled>Finalizar Inspeção</button>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/camera.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

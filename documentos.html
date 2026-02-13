@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos - Checklist Veicular</title>
+    <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+    <div class="timer-header">
+        <span>⏱️</span>
+        <span id="timerDisplay">4:30</span>
+    </div>
+
+    <div class="container">
+        <div class="progresso">
+            <span>Etapa 2/4</span>
+        </div>
+
+        <div class="card">
+            <h2>📄 Documentação Obrigatória</h2>
+
+            <div class="secao-documento">
+                <h3>Motorista</h3>
+                <div class="form-group">
+                    <label>Número da CNH</label>
+                    <input type="text" id="cnh" placeholder="Digite o número da CNH">
+                </div>
+                <div class="foto-upload">
+                    <button class="btn-camera" id="btnFotoCNH">
+                        📸 Tirar foto da CNH
+                    </button>
+                    <span id="statusCNH" class="status-pendente">Pendente</span>
+                </div>
+            </div>
+
+            <div class="secao-documento">
+                <h3>Veículo</h3>
+                <div class="form-group">
+                    <label>CRLV Digital</label>
+                    <input type="text" id="crlv" placeholder="Número do CRLV">
+                </div>
+                <div class="foto-upload">
+                    <button class="btn-camera" id="btnFotoCRLV">
+                        📸 Tirar foto do CRLV
+                    </button>
+                    <span id="statusCRLV" class="status-pendente">Pendente</span>
+                </div>
+            </div>
+
+            <button id="btnSalvarDocs" class="btn-primary" disabled>Salvar e Continuar</button>
+        </div>
+    </div>
+
+    <div id="modalCamera" class="modal" style="display: none;">
+        <div class="modal-content">
+            <video id="videoCamera" autoplay playsinline></video>
+            <canvas id="canvasFoto" style="display: none;"></canvas>
+            <div class="modal-buttons">
+                <button id="btnCapturar">Capturar</button>
+                <button id="btnFecharCamera">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/camera.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

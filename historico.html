@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico - Checklist Veicular</title>
+    <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+    <div class="container">
+        <div class="cabecalho">
+            <h1>📅 Histórico de Checklists</h1>
+            <button id="btnVoltar" class="btn-voltar">← Voltar</button>
+        </div>
+
+        <div class="filtros">
+            <input type="text" id="buscaPlaca" placeholder="Buscar por placa...">
+            <select id="filtroStatus">
+                <option value="">Todos</option>
+                <option value="0">Pendentes</option>
+                <option value="1">Sincronizados</option>
+            </select>
+        </div>
+
+        <div id="listaChecklists" class="lista-checklists">
+            <!-- JS vai preencher aqui -->
+            <div class="loading">Carregando...</div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
