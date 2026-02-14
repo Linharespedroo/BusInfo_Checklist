@@ -15,7 +15,7 @@ const CONFIG = {
   TIMER_DURACAO: 300,
   QUALIDADE_IMAGEM: 0.7,
   MAX_LARGURA_FOTO: 1280,
-  VERSAO: "2.2.0",
+  VERSAO: "2.3.0",
 
   MAX_FOTOS_POR_POSICAO: 3,
   POSICOES: ["dianteira", "lateral_direita", "lateral_esquerda", "traseira"],

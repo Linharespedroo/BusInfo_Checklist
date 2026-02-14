@@ -1,4 +1,4 @@
-const CACHE_NAME = "checklist-veicular-v3";
+const CACHE_NAME = "checklist-veicular-v4";
 const urlsToCache = [
   "/",
   "/index.html",
@@ -45,6 +45,11 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Only cache same-origin requests - skip external URLs (Drive, CORS proxies, etc.)
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((response) => {
       if (response) {

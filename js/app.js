@@ -18,10 +18,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     localStorage.setItem("app_version", CONFIG.VERSAO);
   }
 
-  // Registrar Service Worker
+  // Registrar Service Worker (force update on every load)
   if ("serviceWorker" in navigator) {
     try {
-      await navigator.serviceWorker.register("/sw.js");
+      var reg = await navigator.serviceWorker.register("/sw.js");
+      reg.update();
     } catch (error) {
       console.warn("Service Worker nao registrado:", error);
     }
@@ -101,32 +102,59 @@ async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
     return cached;
   }
 
-  // Try Drive URL via CORS proxy
-  try {
-    var fetchUrl = driveUrl;
-    if (CONFIG.CORS_PROXY) {
-      fetchUrl = CONFIG.CORS_PROXY + encodeURIComponent(driveUrl);
-    }
-    console.log("[" + cacheKey + "] Buscando do Drive via proxy...");
-    var response = await fetch(fetchUrl);
-    console.log("[" + cacheKey + "] Drive status:", response.status);
-    if (response.ok) {
-      var text = await response.text();
-      console.log("[" + cacheKey + "] Drive response length:", text.length);
-      if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
-        var data = JSON.parse(text);
-        await db.cache.set(cacheKey, data);
-        console.log("[" + cacheKey + "] Dados do Drive carregados com sucesso");
-        return data;
-      } else {
-        console.warn(
-          "[" + cacheKey + "] Drive retornou conteudo nao-JSON:",
-          text.substring(0, 200),
+  // Try Drive URL via CORS proxies (try multiple)
+  var proxies = [
+    { name: "corsproxy.io", url: "https://corsproxy.io/?" },
+    {
+      name: "allorigins",
+      url: "https://api.allorigins.win/raw?url=",
+      encode: true,
+    },
+  ];
+
+  for (var pi = 0; pi < proxies.length; pi++) {
+    var proxy = proxies[pi];
+    try {
+      var fetchUrl = proxy.encode
+        ? proxy.url + encodeURIComponent(driveUrl)
+        : proxy.url + driveUrl;
+      console.log(
+        "[" + cacheKey + "] Tentando proxy " + proxy.name + "...",
+      );
+      var response = await fetch(fetchUrl);
+      console.log(
+        "[" + cacheKey + "] " + proxy.name + " status:",
+        response.status,
+      );
+      if (response.ok) {
+        var text = await response.text();
+        console.log(
+          "[" + cacheKey + "] " + proxy.name + " response length:",
+          text.length,
         );
+        if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
+          var data = JSON.parse(text);
+          await db.cache.set(cacheKey, data);
+          console.log(
+            "[" +
+              cacheKey +
+              "] Dados do Drive carregados via " +
+              proxy.name,
+          );
+          return data;
+        } else {
+          console.warn(
+            "[" + cacheKey + "] " + proxy.name + " retornou nao-JSON:",
+            text.substring(0, 200),
+          );
+        }
       }
+    } catch (e) {
+      console.warn(
+        "[" + cacheKey + "] " + proxy.name + " falhou:",
+        e.message,
+      );
     }
-  } catch (e) {
-    console.warn("[" + cacheKey + "] Drive fetch falhou:", e.message);
   }
 
   // Fallback to local file
