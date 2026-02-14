@@ -5,6 +5,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  // Version-based cache invalidation
+  var cachedVersion = localStorage.getItem("app_version");
+  if (cachedVersion !== CONFIG.VERSAO) {
+    console.log(
+      "[App] Versao atualizada: " + cachedVersion + " -> " + CONFIG.VERSAO,
+    );
+    await db.cache.clear("motoristas");
+    await db.cache.clear("veiculos");
+    await db.cache.clear("motoristas_parsed");
+    await db.cache.clear("veiculos_parsed");
+    localStorage.setItem("app_version", CONFIG.VERSAO);
+  }
+
   // Registrar Service Worker
   if ("serviceWorker" in navigator) {
     try {
@@ -20,14 +33,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Carregar dados conforme pagina
-  const pagina = window.location.pathname;
+  var pagina = window.location.pathname;
 
   if (pagina.includes("index.html") || pagina === "/") {
     await initLogin();
   } else if (pagina.includes("empresa.html")) {
     await initEmpresa();
-  } else if (pagina.includes("documentos.html")) {
-    await initDocumentos();
   } else if (pagina.includes("inspecao.html")) {
     await initInspecao();
   } else if (pagina.includes("conclusao.html")) {
@@ -39,8 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // ========== TIMER ==========
 function inicializarTimer() {
-  const headerEl = document.getElementById("timerHeader");
-  // Hide timer on login page
+  var headerEl = document.getElementById("timerHeader");
   if (
     window.location.pathname.includes("index.html") ||
     window.location.pathname === "/"
@@ -49,32 +59,32 @@ function inicializarTimer() {
     return;
   }
 
-  let tempoRestante = sessionStorage.getItem("timerChecklist");
+  var tempoRestante = sessionStorage.getItem("timerChecklist");
   if (!tempoRestante) {
-    tempoRestante = CONFIG?.TIMER_DURACAO || 300;
+    tempoRestante = CONFIG.TIMER_DURACAO || 300;
     sessionStorage.setItem("timerChecklist", tempoRestante);
   } else {
     tempoRestante = parseInt(tempoRestante);
   }
 
   function atualizarDisplay() {
-    const minutos = Math.floor(tempoRestante / 60);
-    const segundos = tempoRestante % 60;
-    const display = minutos + ":" + segundos.toString().padStart(2, "0");
+    var minutos = Math.floor(tempoRestante / 60);
+    var segundos = tempoRestante % 60;
+    var display = minutos + ":" + segundos.toString().padStart(2, "0");
 
-    const timerEl = document.getElementById("timerDisplay");
+    var timerEl = document.getElementById("timerDisplay");
     if (timerEl) timerEl.textContent = display;
     sessionStorage.setItem("timerChecklist", tempoRestante);
 
     if (tempoRestante <= 60) {
-      const header = document.querySelector(".app-header");
+      var header = document.querySelector(".app-header");
       if (header) header.classList.add("urgente");
     }
   }
 
   atualizarDisplay();
 
-  setInterval(() => {
+  setInterval(function () {
     tempoRestante--;
     if (tempoRestante >= 0) {
       atualizarDisplay();
@@ -85,7 +95,7 @@ function inicializarTimer() {
 // ========== FETCH HELPERS ==========
 async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
   // Try cache first
-  const cached = await db.cache.get(cacheKey);
+  var cached = await db.cache.get(cacheKey);
   if (cached) {
     console.log("[" + cacheKey + "] Dados carregados do cache");
     return cached;
@@ -94,18 +104,21 @@ async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
   // Try Drive URL
   try {
     console.log("[" + cacheKey + "] Buscando do Drive...");
-    const response = await fetch(driveUrl);
+    var response = await fetch(driveUrl);
     console.log("[" + cacheKey + "] Drive status:", response.status);
     if (response.ok) {
-      const text = await response.text();
-      // Validate that it's actually JSON (Drive may return HTML login/confirm page)
+      var text = await response.text();
+      console.log("[" + cacheKey + "] Drive response length:", text.length);
       if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
-        const data = JSON.parse(text);
+        var data = JSON.parse(text);
         await db.cache.set(cacheKey, data);
         console.log("[" + cacheKey + "] Dados do Drive carregados com sucesso");
         return data;
       } else {
-        console.warn("[" + cacheKey + "] Drive retornou conteudo nao-JSON");
+        console.warn(
+          "[" + cacheKey + "] Drive retornou conteudo nao-JSON:",
+          text.substring(0, 200),
+        );
       }
     }
   } catch (e) {
@@ -115,13 +128,12 @@ async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
   // Fallback to local file
   try {
     console.log("[" + cacheKey + "] Buscando arquivo local:", fallbackUrl);
-    const response = await fetch(fallbackUrl);
-    console.log("[" + cacheKey + "] Local status:", response.status);
-    if (response.ok) {
-      const data = await response.json();
-      await db.cache.set(cacheKey, data);
-      console.log("[" + cacheKey + "] Dados locais carregados com sucesso");
-      return data;
+    var resp = await fetch(fallbackUrl);
+    if (resp.ok) {
+      var localData = await resp.json();
+      await db.cache.set(cacheKey, localData);
+      console.log("[" + cacheKey + "] Dados locais carregados");
+      return localData;
     }
   } catch (e) {
     console.warn("[" + cacheKey + "] Fallback fetch falhou:", e.message);
@@ -133,21 +145,17 @@ async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
 
 // ========== LOGIN ==========
 async function initLogin() {
-  const cpfInput = document.getElementById("cpf");
-  const btnAcessar = document.getElementById("btnAcessar");
-  const cpfFeedback = document.getElementById("cpfFeedback");
-  const offlineStatus = document.getElementById("offlineStatus");
+  var cpfInput = document.getElementById("cpf");
+  var btnAcessar = document.getElementById("btnAcessar");
+  var cpfFeedback = document.getElementById("cpfFeedback");
+  var offlineStatus = document.getElementById("offlineStatus");
 
   if (!cpfInput || !btnAcessar) return;
 
-  // Load employee data (quadro)
-  let motoristasData = { cpfs: [], motoristas: [] };
+  var motoristasData = { cpfs: [], motoristas: [] };
 
   try {
-    // Clear stale cache to force fresh load (remove after debugging)
-    // await db.cache.clear("motoristas");
-
-    const data = await fetchDriveData(
+    var data = await fetchDriveData(
       CONFIG.DRIVE_QUADRO_URL,
       CONFIG.CPFS_URL,
       "motoristas",
@@ -161,14 +169,15 @@ async function initLogin() {
         "registros",
       );
 
-      // If Drive returned something but parser found nothing, try local
       if (motoristasData.motoristas.length === 0) {
-        console.warn("[Login] Drive data nao gerou motoristas, tentando local...");
+        console.warn(
+          "[Login] Drive data nao gerou motoristas, tentando local...",
+        );
         await db.cache.clear("motoristas");
         try {
-          const localResp = await fetch(CONFIG.CPFS_URL);
+          var localResp = await fetch(CONFIG.CPFS_URL);
           if (localResp.ok) {
-            const localData = await localResp.json();
+            var localData = await localResp.json();
             motoristasData = DataParser.parseMotoristas(localData);
             console.log(
               "[Login] Motoristas do local:",
@@ -184,11 +193,13 @@ async function initLogin() {
         await db.cache.set("motoristas_parsed", motoristasData);
       }
     } else {
-      // Try parsed cache
-      const parsedCache = await db.cache.get("motoristas_parsed");
+      var parsedCache = await db.cache.get("motoristas_parsed");
       if (parsedCache) {
         motoristasData = parsedCache;
-        console.log("[Login] Usando cache parsed:", motoristasData.motoristas.length);
+        console.log(
+          "[Login] Usando cache parsed:",
+          motoristasData.motoristas.length,
+        );
       }
     }
 
@@ -196,11 +207,12 @@ async function initLogin() {
       offlineStatus.style.display = "block";
     }
 
-    // Log first few CPFs for debugging
     if (motoristasData.motoristas.length > 0) {
       console.log(
         "[Login] Primeiros CPFs disponiveis:",
-        motoristasData.motoristas.slice(0, 3).map((m) => m.cpf),
+        motoristasData.motoristas.slice(0, 3).map(function (m) {
+          return m.cpf;
+        }),
       );
     }
   } catch (error) {
@@ -209,10 +221,9 @@ async function initLogin() {
   }
 
   // CPF input handler
-  cpfInput.addEventListener("input", (e) => {
-    let value = e.target.value.replace(/\D/g, "");
+  cpfInput.addEventListener("input", function (e) {
+    var value = e.target.value.replace(/\D/g, "");
 
-    // Apply mask
     if (value.length <= 11) {
       value = value.replace(/(\d{3})(\d)/, "$1.$2");
       value = value.replace(/(\d{3})(\d)/, "$1.$2");
@@ -220,19 +231,18 @@ async function initLogin() {
       e.target.value = value;
     }
 
-    const cpfLimpo = value.replace(/\D/g, "");
+    var cpfLimpo = value.replace(/\D/g, "");
 
-    // Find employee
-    const motorista = motoristasData.motoristas.find(
-      (m) => m.cpf === cpfLimpo,
-    );
+    var motorista = motoristasData.motoristas.find(function (m) {
+      return m.cpf === cpfLimpo;
+    });
 
     if (motorista) {
-      cpfFeedback.textContent = motorista.nome || "Motorista " + cpfLimpo.slice(-4);
+      cpfFeedback.textContent =
+        motorista.nome || "Motorista " + cpfLimpo.slice(-4);
       cpfFeedback.className = "feedback-success";
       btnAcessar.disabled = false;
 
-      // Store employee data
       sessionStorage.setItem("cpfMotorista", motorista.cpf);
       sessionStorage.setItem("nomeMotorista", motorista.nome);
       sessionStorage.setItem("matriculaMotorista", motorista.matricula || "");
@@ -250,7 +260,7 @@ async function initLogin() {
     }
   });
 
-  btnAcessar.addEventListener("click", () => {
+  btnAcessar.addEventListener("click", function () {
     sessionStorage.setItem("timerChecklist", CONFIG.TIMER_DURACAO);
     window.location.href = "empresa.html";
   });
@@ -258,36 +268,38 @@ async function initLogin() {
 
 // ========== VEHICLE SELECTION (empresa.html) ==========
 async function initEmpresa() {
-  const selectVeiculo = document.getElementById("selectVeiculo");
-  const btnContinuar = document.getElementById("btnContinuar");
-  const infoEmpresa = document.getElementById("infoEmpresa");
-  const infoModelo = document.getElementById("infoModelo");
+  var searchInput = document.getElementById("searchVeiculo");
+  var searchResults = document.getElementById("searchResults");
+  var btnContinuar = document.getElementById("btnContinuar");
+  var infoEmpresa = document.getElementById("infoEmpresa");
+  var infoModelo = document.getElementById("infoModelo");
+  var vehicleInfoBox = document.getElementById("vehicleInfoBox");
 
   // Display employee info
-  const nomeMotorista = sessionStorage.getItem("nomeMotorista") || "";
-  const matricula = sessionStorage.getItem("matriculaMotorista") || "";
-  const empresaMot = sessionStorage.getItem("empresaMotorista") || "";
-  const setorMot = sessionStorage.getItem("setorMotorista") || "";
+  var nomeMotorista = sessionStorage.getItem("nomeMotorista") || "";
+  var matricula = sessionStorage.getItem("matriculaMotorista") || "";
+  var empresaMot = sessionStorage.getItem("empresaMotorista") || "";
+  var setorMot = sessionStorage.getItem("setorMotorista") || "";
 
-  const userNameEl = document.getElementById("userName");
-  const userMetaEl = document.getElementById("userMeta");
+  var userNameEl = document.getElementById("userName");
+  var userMetaEl = document.getElementById("userMeta");
 
   if (userNameEl) {
     userNameEl.textContent =
       (matricula ? matricula + " - " : "") + nomeMotorista;
   }
   if (userMetaEl) {
-    const parts = [];
+    var parts = [];
     if (empresaMot) parts.push(empresaMot);
     if (setorMot) parts.push(setorMot);
     userMetaEl.textContent = parts.join(" | ");
   }
 
   // Load vehicles
-  let veiculos = [];
+  var veiculos = [];
 
   try {
-    const data = await fetchDriveData(
+    var data = await fetchDriveData(
       CONFIG.DRIVE_VEICULOS_URL,
       CONFIG.VEICULOS_URL,
       "veiculos",
@@ -297,323 +309,480 @@ async function initEmpresa() {
       veiculos = DataParser.parseVeiculos(data);
       await db.cache.set("veiculos_parsed", veiculos);
     } else {
-      const parsedCache = await db.cache.get("veiculos_parsed");
+      var parsedCache = await db.cache.get("veiculos_parsed");
       if (parsedCache) veiculos = parsedCache;
     }
   } catch (error) {
     console.error("Erro ao carregar veiculos:", error);
   }
 
-  // Populate vehicle dropdown
-  if (selectVeiculo) {
-    // Sort by prefixo
-    veiculos.sort((a, b) => a.prefixo.localeCompare(b.prefixo));
+  veiculos.sort(function (a, b) {
+    return a.prefixo.localeCompare(b.prefixo);
+  });
 
-    veiculos.forEach((v, index) => {
-      const option = document.createElement("option");
-      option.value = index;
-      option.textContent = v.prefixo + " - " + v.placaFormatada;
-      selectVeiculo.appendChild(option);
+  var selectedVeiculo = null;
+
+  function renderResults(query) {
+    var q = query.toUpperCase().trim();
+    var filtered =
+      q === ""
+        ? veiculos
+        : veiculos.filter(function (v) {
+            return (
+              v.prefixo.toUpperCase().includes(q) ||
+              v.placa.toUpperCase().includes(q) ||
+              v.placaFormatada.toUpperCase().includes(q)
+            );
+          });
+
+    if (filtered.length === 0) {
+      searchResults.innerHTML =
+        '<div class="search-empty">Nenhum veiculo encontrado</div>';
+      searchResults.style.display = "block";
+      return;
+    }
+
+    searchResults.innerHTML = filtered
+      .slice(0, 20)
+      .map(function (v) {
+        var idx = veiculos.indexOf(v);
+        return (
+          '<div class="search-result-item" data-index="' +
+          idx +
+          '">' +
+          "<strong>" +
+          v.prefixo +
+          " - " +
+          v.placaFormatada +
+          "</strong>" +
+          "<span>" +
+          v.empresa +
+          "</span>" +
+          "</div>"
+        );
+      })
+      .join("");
+    searchResults.style.display = "block";
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", function () {
+      renderResults(searchInput.value);
+      selectedVeiculo = null;
+      if (vehicleInfoBox) vehicleInfoBox.classList.remove("visible");
+      btnContinuar.disabled = true;
+    });
+
+    searchInput.addEventListener("focus", function () {
+      renderResults(searchInput.value);
     });
   }
 
-  // Vehicle selection handler
-  const vehicleInfoBox = document.getElementById("vehicleInfoBox");
+  document.addEventListener("click", function (e) {
+    if (
+      searchInput &&
+      searchResults &&
+      !searchInput.contains(e.target) &&
+      !searchResults.contains(e.target)
+    ) {
+      searchResults.style.display = "none";
+    }
+  });
 
-  if (selectVeiculo) {
-    selectVeiculo.addEventListener("change", () => {
-      const idx = selectVeiculo.value;
-      if (idx === "") {
-        if (infoEmpresa) infoEmpresa.textContent = "";
-        if (infoModelo) infoModelo.textContent = "";
-        if (vehicleInfoBox) vehicleInfoBox.classList.remove("visible");
-        btnContinuar.disabled = true;
-        return;
-      }
+  if (searchResults) {
+    searchResults.addEventListener("click", function (e) {
+      var item = e.target.closest(".search-result-item");
+      if (!item) return;
 
-      const veiculo = veiculos[parseInt(idx)];
-      if (veiculo) {
-        if (infoEmpresa) {
-          infoEmpresa.textContent = "Empresa: " + veiculo.empresa;
-        }
-        if (infoModelo && veiculo.modelo) {
-          infoModelo.textContent = veiculo.modelo;
-        }
-        if (vehicleInfoBox) vehicleInfoBox.classList.add("visible");
-        btnContinuar.disabled = false;
-      }
+      var idx = parseInt(item.dataset.index);
+      var veiculo = veiculos[idx];
+      if (!veiculo) return;
+
+      selectedVeiculo = veiculo;
+      searchInput.value = veiculo.prefixo + " - " + veiculo.placaFormatada;
+      searchResults.style.display = "none";
+
+      if (infoEmpresa) infoEmpresa.textContent = "Empresa: " + veiculo.empresa;
+      if (infoModelo && veiculo.modelo)
+        infoModelo.textContent = veiculo.modelo;
+      if (vehicleInfoBox) vehicleInfoBox.classList.add("visible");
+      btnContinuar.disabled = false;
     });
   }
 
   if (btnContinuar) {
-    btnContinuar.addEventListener("click", () => {
-      const idx = selectVeiculo.value;
-      const veiculo = veiculos[parseInt(idx)];
-
-      if (veiculo) {
-        sessionStorage.setItem("bandeira", veiculo.empresa);
-        sessionStorage.setItem("placa", veiculo.placaFormatada);
-        sessionStorage.setItem("prefixo", veiculo.prefixo);
-        sessionStorage.setItem("modeloVeiculo", veiculo.modelo || "");
+    btnContinuar.addEventListener("click", function () {
+      if (selectedVeiculo) {
+        sessionStorage.setItem("bandeira", selectedVeiculo.empresa);
+        sessionStorage.setItem("placa", selectedVeiculo.placaFormatada);
+        sessionStorage.setItem("prefixo", selectedVeiculo.prefixo);
+        sessionStorage.setItem("modeloVeiculo", selectedVeiculo.modelo || "");
       }
-
-      window.location.href = "documentos.html";
+      window.location.href = "inspecao.html";
     });
   }
-}
-
-// ========== DOCUMENTOS ==========
-async function initDocumentos() {
-  const btnFotoCNH = document.getElementById("btnFotoCNH");
-  const btnFotoCRLV = document.getElementById("btnFotoCRLV");
-  const btnSalvar = document.getElementById("btnSalvarDocs");
-
-  let cnhFoto = null;
-  let crlvFoto = null;
-
-  function verificarPreenchimento() {
-    const cnhNumero = document.getElementById("cnh").value.length > 0;
-    const crlvNumero = document.getElementById("crlv").value.length > 0;
-    btnSalvar.disabled = !(cnhNumero && crlvNumero && cnhFoto && crlvFoto);
-  }
-
-  btnFotoCNH.addEventListener("click", () => abrirCamera("cnh"));
-  btnFotoCRLV.addEventListener("click", () => abrirCamera("crlv"));
-
-  async function abrirCamera(tipo) {
-    const modal = document.getElementById("modalCamera");
-    const video = document.getElementById("videoCamera");
-
-    modal.style.display = "flex";
-
-    if (await cameraService.iniciar(video)) {
-      const btnCapturar = document.getElementById("btnCapturar");
-      const btnFechar = document.getElementById("btnFecharCamera");
-
-      btnCapturar.onclick = async () => {
-        const blob = await cameraService.capturar();
-
-        if (tipo === "cnh") {
-          cnhFoto = blob;
-          document.getElementById("statusCNH").className = "status-sucesso";
-          document.getElementById("statusCNH").textContent = "Foto capturada";
-        } else {
-          crlvFoto = blob;
-          document.getElementById("statusCRLV").className = "status-sucesso";
-          document.getElementById("statusCRLV").textContent = "Foto capturada";
-        }
-
-        cameraService.parar();
-        modal.style.display = "none";
-        verificarPreenchimento();
-      };
-
-      btnFechar.onclick = () => {
-        cameraService.parar();
-        modal.style.display = "none";
-      };
-    }
-  }
-
-  document
-    .getElementById("cnh")
-    .addEventListener("input", verificarPreenchimento);
-  document
-    .getElementById("crlv")
-    .addEventListener("input", verificarPreenchimento);
-
-  btnSalvar.addEventListener("click", async () => {
-    const checklistId = await db.checklists.salvar({
-      cpfMotorista: sessionStorage.getItem("cpfMotorista"),
-      nomeMotorista: sessionStorage.getItem("nomeMotorista"),
-      matricula: sessionStorage.getItem("matriculaMotorista"),
-      placa: sessionStorage.getItem("placa"),
-      prefixo: sessionStorage.getItem("prefixo"),
-      bandeira: sessionStorage.getItem("bandeira"),
-      cnh: document.getElementById("cnh").value,
-      crlv: document.getElementById("crlv").value,
-    });
-
-    if (cnhFoto) {
-      await db.fotos.salvar(checklistId, "cnh", "frente", cnhFoto);
-    }
-    if (crlvFoto) {
-      await db.fotos.salvar(checklistId, "crlv", "frente", crlvFoto);
-    }
-
-    sessionStorage.setItem("checklistId", checklistId);
-    window.location.href = "inspecao.html";
-  });
 }
 
 // ========== INSPECAO ==========
 async function initInspecao() {
-  const checklistId = parseInt(sessionStorage.getItem("checklistId"));
-  const botoesFoto = document.querySelectorAll(".btn-foto-pequeno");
-  const radioRegular = document.querySelector('input[value="regular"]');
-  const radioIrregular = document.querySelector('input[value="irregular"]');
-  const painelIrregularidades = document.getElementById(
-    "painelIrregularidades",
-  );
-  const btnFinalizar = document.getElementById("btnFinalizarInspecao");
+  // Create checklist at start of inspection
+  var checklistId = await db.checklists.salvar({
+    cpfMotorista: sessionStorage.getItem("cpfMotorista"),
+    nomeMotorista: sessionStorage.getItem("nomeMotorista"),
+    matricula: sessionStorage.getItem("matriculaMotorista"),
+    placa: sessionStorage.getItem("placa"),
+    prefixo: sessionStorage.getItem("prefixo"),
+    bandeira: sessionStorage.getItem("bandeira"),
+  });
+  sessionStorage.setItem("checklistId", checklistId);
 
-  let fotosCapturadas = {};
-  let irregularidades = [];
+  var container = document.getElementById("posicoesContainer");
+  var btnFinalizar = document.getElementById("btnFinalizarInspecao");
 
-  // Load irregularity types
-  try {
-    const irregularesCache = await db.cache.get("irregulares");
-    if (!irregularesCache) {
-      const response = await fetch(CONFIG.IRREGULARIDADES_URL);
-      const data = await response.json();
-      await db.cache.set("irregulares", data);
+  // State for each position
+  var estado = {};
+  CONFIG.POSICOES.forEach(function (pos) {
+    estado[pos] = {
+      fotos: [],
+      condicao: null,
+      irregularidades: [],
+    };
+  });
+
+  var posicaoLabels = {
+    frente: "Frente",
+    direita: "Direita",
+    esquerda: "Esquerda",
+    traseira: "Traseira",
+  };
+
+  var posicaoIcons = {
+    frente:
+      '<line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline>',
+    direita:
+      '<line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>',
+    esquerda:
+      '<line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline>',
+    traseira:
+      '<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>',
+  };
+
+  // Build position cards dynamically
+  CONFIG.POSICOES.forEach(function (pos) {
+    var card = document.createElement("div");
+    card.className = "posicao-card";
+    card.id = "posicao-" + pos;
+
+    var fotosHTML = "";
+    for (var i = 0; i < CONFIG.MAX_FOTOS_POR_POSICAO; i++) {
+      fotosHTML +=
+        '<div class="foto-slot vazio" data-pos="' +
+        pos +
+        '" data-idx="' +
+        i +
+        '">' +
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>' +
+        '<circle cx="12" cy="13" r="4"></circle>' +
+        "</svg>" +
+        "<span>Foto " +
+        (i + 1) +
+        "</span>" +
+        "</div>";
     }
-  } catch (error) {
-    console.error("Erro ao carregar irregularidades:", error);
-  }
 
-  // Photo buttons
-  botoesFoto.forEach((btn) => {
-    const item = btn.closest(".item-inspecao");
-    const posicao = item.dataset.posicao;
-
-    btn.addEventListener("click", async () => {
-      const modal = document.getElementById("modalCamera");
-      const video = document.getElementById("videoCamera");
-
-      modal.style.display = "flex";
-
-      if (await cameraService.iniciar(video)) {
-        const btnCapturar = document.getElementById("btnCapturar");
-        const btnFechar = document.getElementById("btnFecharCamera");
-
-        btnCapturar.onclick = async () => {
-          const blob = await cameraService.capturar();
-          await db.fotos.salvar(checklistId, "inspecao", posicao, blob);
-
-          fotosCapturadas[posicao] = blob;
-          item.classList.add("com-foto");
-          item.querySelector(".status-foto").textContent = "OK";
-
-          cameraService.parar();
-          modal.style.display = "none";
-          verificarFinalizacao();
-        };
-
-        btnFechar.onclick = () => {
-          cameraService.parar();
-          modal.style.display = "none";
-        };
-      }
-    });
-  });
-
-  // Condition radio buttons
-  radioIrregular.addEventListener("change", () => {
-    painelIrregularidades.style.display = "block";
-    carregarMenuIrregularidades();
-  });
-
-  radioRegular.addEventListener("change", () => {
-    painelIrregularidades.style.display = "none";
-    irregularidades = [];
-    verificarFinalizacao();
-  });
-
-  function carregarMenuIrregularidades() {
-    const container = document.getElementById("listaIrregularidades");
-    container.innerHTML = "";
-
-    irregularidades.forEach((irr, index) => {
-      adicionarLinhaIrregularidade(index, irr.posicao, irr.descricao);
-    });
-
-    document.getElementById("btnAdicionarIrregularidade").onclick = () => {
-      irregularidades.push({ posicao: "", descricao: "" });
-      adicionarLinhaIrregularidade(irregularidades.length - 1);
-      verificarFinalizacao();
-    };
-  }
-
-  function adicionarLinhaIrregularidade(
-    index,
-    posicaoSalva = "",
-    descSalva = "",
-  ) {
-    const container = document.getElementById("listaIrregularidades");
-    const div = document.createElement("div");
-    div.className = "linha-irregularidade";
-    div.innerHTML =
-      '<select class="select-posicao">' +
-      '<option value="">Posicao</option>' +
-      '<option value="frente">Frente</option>' +
-      '<option value="direita">Direita</option>' +
-      '<option value="esquerda">Esquerda</option>' +
-      '<option value="traseira">Traseira</option>' +
-      '<option value="topo">Topo</option>' +
-      "</select>" +
-      '<input type="text" class="input-descricao" placeholder="Descricao" value="' +
-      descSalva +
+    card.innerHTML =
+      '<div class="posicao-header">' +
+      '<div class="posicao-icon">' +
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      posicaoIcons[pos] +
+      "</svg>" +
+      "</div>" +
+      "<h3>" +
+      posicaoLabels[pos] +
+      "</h3>" +
+      '<span class="posicao-foto-count" id="count-' +
+      pos +
+      '">0/' +
+      CONFIG.MAX_FOTOS_POR_POSICAO +
+      "</span>" +
+      "</div>" +
+      '<div class="fotos-grid">' +
+      fotosHTML +
+      "</div>" +
+      '<div class="condicao-section">' +
+      '<div class="condicao-toggle">' +
+      '<button class="btn-condicao btn-regular" data-pos="' +
+      pos +
+      '" data-val="regular">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
+      " Regular" +
+      "</button>" +
+      '<button class="btn-condicao btn-irregular" data-pos="' +
+      pos +
+      '" data-val="irregular">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>' +
+      " Irregular" +
+      "</button>" +
+      "</div>" +
+      "</div>" +
+      '<div class="irregularidades-section" id="irr-section-' +
+      pos +
+      '" style="display:none">' +
+      '<div class="irr-lista" id="irr-lista-' +
+      pos +
+      '"></div>' +
+      '<button class="btn-add-irr" data-pos="' +
+      pos +
       '">' +
-      '<button class="btn-remover" type="button">Remover</button>';
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>' +
+      " Adicionar Irregularidade" +
+      "</button>" +
+      "</div>";
 
-    const select = div.querySelector(".select-posicao");
-    select.value = posicaoSalva;
+    container.appendChild(card);
+  });
 
-    select.onchange = () => {
-      irregularidades[index].posicao = select.value;
+  // Event delegation for all clicks inside positions container
+  container.addEventListener("click", async function (e) {
+    // Photo slot click
+    var slot = e.target.closest(".foto-slot");
+    if (slot) {
+      var pos = slot.dataset.pos;
+      var idx = parseInt(slot.dataset.idx);
+      await abrirCamera(pos, idx, slot);
+      return;
+    }
+
+    // Condition button click
+    var btnCondicao = e.target.closest(".btn-condicao");
+    if (btnCondicao) {
+      var cPos = btnCondicao.dataset.pos;
+      var cVal = btnCondicao.dataset.val;
+
+      var parent = btnCondicao.parentElement;
+      parent
+        .querySelectorAll(".btn-condicao")
+        .forEach(function (b) {
+          b.classList.remove("active");
+        });
+      btnCondicao.classList.add("active");
+
+      estado[cPos].condicao = cVal;
+
+      var irrSection = document.getElementById("irr-section-" + cPos);
+      if (cVal === "irregular") {
+        irrSection.style.display = "block";
+        if (estado[cPos].irregularidades.length === 0) {
+          adicionarIrregularidade(cPos);
+        }
+      } else {
+        irrSection.style.display = "none";
+        estado[cPos].irregularidades = [];
+        document.getElementById("irr-lista-" + cPos).innerHTML = "";
+      }
       verificarFinalizacao();
-    };
+      return;
+    }
 
-    const input = div.querySelector(".input-descricao");
-    input.oninput = () => {
-      irregularidades[index].descricao = input.value;
+    // Add irregularity button
+    var btnAddIrr = e.target.closest(".btn-add-irr");
+    if (btnAddIrr) {
+      adicionarIrregularidade(btnAddIrr.dataset.pos);
+      return;
+    }
+
+    // Remove irregularity button
+    var btnRemIrr = e.target.closest(".btn-remover-irr");
+    if (btnRemIrr) {
+      var rPos = btnRemIrr.dataset.pos;
+      var rIdx = parseInt(btnRemIrr.dataset.idx);
+      estado[rPos].irregularidades.splice(rIdx, 1);
+      renderIrregularidades(rPos);
       verificarFinalizacao();
-    };
+      return;
+    }
 
-    div.querySelector(".btn-remover").onclick = () => {
-      irregularidades.splice(index, 1);
-      carregarMenuIrregularidades();
+    // Photo for irregularity button
+    var btnFotoIrr = e.target.closest(".btn-foto-irr");
+    if (btnFotoIrr) {
+      var fPos = btnFotoIrr.dataset.pos;
+      var fIdx = parseInt(btnFotoIrr.dataset.idx);
+      await abrirCameraIrregularidade(fPos, fIdx);
+      return;
+    }
+  });
+
+  // Handle irregularity dropdown changes
+  container.addEventListener("change", function (e) {
+    if (e.target.classList.contains("select-irr")) {
+      var pos = e.target.dataset.pos;
+      var idx = parseInt(e.target.dataset.idx);
+      estado[pos].irregularidades[idx].tipo = e.target.value;
       verificarFinalizacao();
-    };
+    }
+  });
 
-    container.appendChild(div);
+  function adicionarIrregularidade(pos) {
+    estado[pos].irregularidades.push({ tipo: "", foto: null });
+    renderIrregularidades(pos);
+    verificarFinalizacao();
+  }
+
+  function renderIrregularidades(pos) {
+    var lista = document.getElementById("irr-lista-" + pos);
+    var tipos = CONFIG.IRREGULARIDADES[pos] || [];
+
+    lista.innerHTML = estado[pos].irregularidades
+      .map(function (irr, idx) {
+        return (
+          '<div class="irr-item">' +
+          '<div class="irr-item-top">' +
+          '<select class="select-irr" data-pos="' +
+          pos +
+          '" data-idx="' +
+          idx +
+          '">' +
+          '<option value="">Selecione o tipo...</option>' +
+          tipos
+            .map(function (tipo) {
+              return (
+                '<option value="' +
+                tipo +
+                '"' +
+                (irr.tipo === tipo ? " selected" : "") +
+                ">" +
+                tipo +
+                "</option>"
+              );
+            })
+            .join("") +
+          "</select>" +
+          '<button class="btn-remover-irr" data-pos="' +
+          pos +
+          '" data-idx="' +
+          idx +
+          '" type="button">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+          "</button>" +
+          "</div>" +
+          '<button class="btn-foto-irr ' +
+          (irr.foto ? "com-foto" : "") +
+          '" data-pos="' +
+          pos +
+          '" data-idx="' +
+          idx +
+          '">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>' +
+          (irr.foto ? " Foto capturada" : " Tirar foto da irregularidade") +
+          "</button>" +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
+  async function abrirCamera(pos, idx, slotEl) {
+    var modal = document.getElementById("modalCamera");
+    var video = document.getElementById("videoCamera");
+    modal.style.display = "flex";
+
+    if (await cameraService.iniciar(video)) {
+      document.getElementById("btnCapturar").onclick = async function () {
+        var blob = await cameraService.capturar();
+        estado[pos].fotos[idx] = blob;
+        await db.fotos.salvar(checklistId, "inspecao", pos + "_" + idx, blob);
+
+        slotEl.classList.remove("vazio");
+        slotEl.classList.add("capturada");
+        slotEl.innerHTML =
+          '<img src="' +
+          URL.createObjectURL(blob) +
+          '" alt="Foto">' +
+          "<span>Foto " +
+          (idx + 1) +
+          "</span>";
+
+        // Update count
+        var count = estado[pos].fotos.filter(Boolean).length;
+        var countEl = document.getElementById("count-" + pos);
+        if (countEl) countEl.textContent = count + "/" + CONFIG.MAX_FOTOS_POR_POSICAO;
+
+        cameraService.parar();
+        modal.style.display = "none";
+        verificarFinalizacao();
+      };
+      document.getElementById("btnFecharCamera").onclick = function () {
+        cameraService.parar();
+        modal.style.display = "none";
+      };
+    }
+  }
+
+  async function abrirCameraIrregularidade(pos, idx) {
+    var modal = document.getElementById("modalCamera");
+    var video = document.getElementById("videoCamera");
+    modal.style.display = "flex";
+
+    if (await cameraService.iniciar(video)) {
+      document.getElementById("btnCapturar").onclick = async function () {
+        var blob = await cameraService.capturar();
+        estado[pos].irregularidades[idx].foto = blob;
+        await db.fotos.salvar(
+          checklistId,
+          "irregularidade",
+          pos + "_irr_" + idx,
+          blob,
+        );
+
+        cameraService.parar();
+        modal.style.display = "none";
+        renderIrregularidades(pos);
+        verificarFinalizacao();
+      };
+      document.getElementById("btnFecharCamera").onclick = function () {
+        cameraService.parar();
+        modal.style.display = "none";
+      };
+    }
   }
 
   function verificarFinalizacao() {
-    const temTodasFotos = [
-      "frente",
-      "direita",
-      "esquerda",
-      "traseira",
-      "topo",
-    ].every((pos) => fotosCapturadas[pos]);
+    var valid = true;
 
-    const condicaoSelecionada = document.querySelector(
-      'input[name="condicao"]:checked',
-    );
+    CONFIG.POSICOES.forEach(function (pos) {
+      var st = estado[pos];
+      // Must have at least 1 photo
+      if (st.fotos.filter(Boolean).length === 0) valid = false;
+      // Must have condition selected
+      if (!st.condicao) valid = false;
+      // If irregular, all irregularities need type + photo
+      if (st.condicao === "irregular") {
+        if (st.irregularidades.length === 0) valid = false;
+        st.irregularidades.forEach(function (irr) {
+          if (!irr.tipo || !irr.foto) valid = false;
+        });
+      }
+    });
 
-    let irregularidadesValidas = true;
-    if (condicaoSelecionada?.value === "irregular") {
-      irregularidadesValidas =
-        irregularidades.length > 0 &&
-        irregularidades.every((irr) => irr.posicao && irr.descricao);
-    }
-
-    btnFinalizar.disabled = !(
-      temTodasFotos &&
-      condicaoSelecionada &&
-      irregularidadesValidas
-    );
+    btnFinalizar.disabled = !valid;
   }
 
-  btnFinalizar.addEventListener("click", async () => {
-    for (const irr of irregularidades) {
-      await db.irregulares.salvar({
-        checklistId,
-        posicao: irr.posicao,
-        descricao: irr.descricao,
-      });
+  btnFinalizar.addEventListener("click", async function () {
+    // Save all irregularities
+    for (var p = 0; p < CONFIG.POSICOES.length; p++) {
+      var pos = CONFIG.POSICOES[p];
+      var st = estado[pos];
+      if (st.condicao === "irregular") {
+        for (var i = 0; i < st.irregularidades.length; i++) {
+          var irr = st.irregularidades[i];
+          await db.irregulares.salvar({
+            checklistId: checklistId,
+            posicao: pos,
+            tipo: irr.tipo,
+          });
+        }
+      }
     }
     window.location.href = "conclusao.html";
   });
@@ -621,16 +790,16 @@ async function initInspecao() {
 
 // ========== CONCLUSAO ==========
 async function initConclusao() {
-  const checklistId = parseInt(sessionStorage.getItem("checklistId"));
-  const resumoDiv = document.getElementById("resumoDados");
+  var checklistId = parseInt(sessionStorage.getItem("checklistId"));
+  var resumoDiv = document.getElementById("resumoDados");
 
-  const checklist = await db.checklists.get(checklistId);
-  const fotos = await db.fotos.buscarPorChecklist(checklistId);
-  const irregulares = await db.irregulares.buscarPorChecklist(checklistId);
+  var checklist = await db.checklists.get(checklistId);
+  var fotos = await db.fotos.buscarPorChecklist(checklistId);
+  var irregulares = await db.irregulares.buscarPorChecklist(checklistId);
 
   if (checklist && resumoDiv) {
-    const nomeMotorista = sessionStorage.getItem("nomeMotorista") || "";
-    const matricula = sessionStorage.getItem("matriculaMotorista") || "";
+    var nomeMotorista = sessionStorage.getItem("nomeMotorista") || "";
+    var matricula = sessionStorage.getItem("matriculaMotorista") || "";
 
     resumoDiv.innerHTML =
       '<div class="resumo-item"><strong>Motorista:</strong> ' +
@@ -662,17 +831,17 @@ async function initConclusao() {
     }
   }
 
-  const btnNovo = document.getElementById("btnNovoChecklist");
+  var btnNovo = document.getElementById("btnNovoChecklist");
   if (btnNovo) {
-    btnNovo.onclick = () => {
+    btnNovo.onclick = function () {
       sessionStorage.clear();
       window.location.href = "index.html";
     };
   }
 
-  const btnHistorico = document.getElementById("btnVerHistorico");
+  var btnHistorico = document.getElementById("btnVerHistorico");
   if (btnHistorico) {
-    btnHistorico.onclick = () => {
+    btnHistorico.onclick = function () {
       window.location.href = "historico.html";
     };
   }
@@ -680,11 +849,12 @@ async function initConclusao() {
 
 // ========== HISTORICO ==========
 async function initHistorico() {
-  const container = document.getElementById("listaChecklists");
+  var container = document.getElementById("listaChecklists");
 
-  const checklists = await db.checklists.getAll();
-  // Sort by timestamp descending
-  checklists.sort((a, b) => b.timestamp - a.timestamp);
+  var checklists = await db.checklists.getAll();
+  checklists.sort(function (a, b) {
+    return b.timestamp - a.timestamp;
+  });
 
   function renderChecklists(list) {
     if (list.length === 0) {
@@ -694,8 +864,8 @@ async function initHistorico() {
     }
 
     container.innerHTML = list
-      .map(
-        (c) =>
+      .map(function (c) {
+        return (
           '<div class="item-checklist ' +
           (c.sincronizado ? "" : "pendente") +
           '">' +
@@ -717,48 +887,49 @@ async function initHistorico() {
           (c.sincronizado ? "Sincronizado" : "Pendente") +
           "</span>" +
           "</div>" +
-          "</div>",
-      )
+          "</div>"
+        );
+      })
       .join("");
   }
 
   renderChecklists(checklists);
 
-  // Filter function
   function filtrar() {
-    const buscaPlaca = (
+    var buscaPlaca = (
       document.getElementById("buscaPlaca").value || ""
     ).toUpperCase();
-    const filtroStatus = document.getElementById("filtroStatus").value;
+    var filtroStatus = document.getElementById("filtroStatus").value;
 
-    let filtered = checklists;
+    var filtered = checklists;
 
     if (buscaPlaca) {
-      filtered = filtered.filter(
-        (c) =>
+      filtered = filtered.filter(function (c) {
+        return (
           c.placa.includes(buscaPlaca) ||
-          (c.prefixo && c.prefixo.includes(buscaPlaca)),
-      );
+          (c.prefixo && c.prefixo.includes(buscaPlaca))
+        );
+      });
     }
 
     if (filtroStatus !== "") {
-      filtered = filtered.filter(
-        (c) => c.sincronizado === parseInt(filtroStatus),
-      );
+      filtered = filtered.filter(function (c) {
+        return c.sincronizado === parseInt(filtroStatus);
+      });
     }
 
     renderChecklists(filtered);
   }
 
-  const btnVoltar = document.getElementById("btnVoltar");
+  var btnVoltar = document.getElementById("btnVoltar");
   if (btnVoltar) {
-    btnVoltar.onclick = () => {
+    btnVoltar.onclick = function () {
       window.location.href = "index.html";
     };
   }
 
-  const buscaInput = document.getElementById("buscaPlaca");
-  const filtroSelect = document.getElementById("filtroStatus");
+  var buscaInput = document.getElementById("buscaPlaca");
+  var filtroSelect = document.getElementById("filtroStatus");
   if (buscaInput) buscaInput.addEventListener("input", filtrar);
   if (filtroSelect) filtroSelect.addEventListener("change", filtrar);
 }

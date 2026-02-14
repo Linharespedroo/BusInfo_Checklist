@@ -10,71 +10,35 @@
   <body>
     <header class="app-header" id="timerHeader">
       <div class="header-brand">
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M8 6v6"></path>
-          <path d="M15 6v6"></path>
-          <path d="M2 12h19.6"></path>
-          <path
-            d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"
-          ></path>
-          <circle cx="7" cy="18" r="2"></circle>
-          <path d="M9 18h5"></path>
-          <circle cx="16" cy="18" r="2"></circle>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 6v6"></path><path d="M15 6v6"></path><path d="M2 12h19.6"></path>
+          <path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"></path>
+          <circle cx="7" cy="18" r="2"></circle><path d="M9 18h5"></path><circle cx="16" cy="18" r="2"></circle>
         </svg>
         <span>Checklist Veicular</span>
       </div>
       <div class="header-timer">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
         </svg>
         <span id="timerDisplay">5:00</span>
       </div>
     </header>
 
     <div class="container">
-      <!-- Step Indicator -->
+      <!-- Step Indicator - 3 steps -->
       <div class="step-indicator">
         <div class="step active">1</div>
         <div class="step-line"></div>
         <div class="step">2</div>
         <div class="step-line"></div>
         <div class="step">3</div>
-        <div class="step-line"></div>
-        <div class="step">4</div>
       </div>
 
       <!-- User Info -->
       <div class="user-info-card">
         <div class="user-avatar">
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
@@ -88,16 +52,7 @@
       <!-- Vehicle Selection -->
       <div class="card">
         <h2>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="1" y="3" width="15" height="13"></rect>
             <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
             <circle cx="5.5" cy="18.5" r="2.5"></circle>
@@ -107,10 +62,15 @@
         </h2>
 
         <div class="form-group">
-          <label for="selectVeiculo">Prefixo - Placa</label>
-          <select id="selectVeiculo">
-            <option value="">-- Escolha um ve&iacute;culo --</option>
-          </select>
+          <label for="searchVeiculo">Prefixo - Placa</label>
+          <div class="search-select-wrapper">
+            <input type="text" id="searchVeiculo" placeholder="Digite prefixo ou placa..." autocomplete="off" />
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <div class="search-results" id="searchResults"></div>
+          </div>
         </div>
 
         <div class="vehicle-info" id="vehicleInfoBox">
@@ -119,16 +79,7 @@
         </div>
 
         <button id="btnContinuar" class="btn-primary" disabled>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
           Continuar

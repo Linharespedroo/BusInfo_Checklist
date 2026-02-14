@@ -26,14 +26,13 @@
     </header>
 
     <div class="container">
+      <!-- Step Indicator - 3 steps, step 2 active -->
       <div class="step-indicator">
         <div class="step done">1</div>
         <div class="step-line done"></div>
-        <div class="step done">2</div>
-        <div class="step-line done"></div>
-        <div class="step active">3</div>
+        <div class="step active">2</div>
         <div class="step-line"></div>
-        <div class="step">4</div>
+        <div class="step">3</div>
       </div>
 
       <div class="card">
@@ -45,72 +44,8 @@
           Inspe&ccedil;&atilde;o do Ve&iacute;culo
         </h2>
 
-        <div class="grid-inspecao">
-          <div class="item-inspecao" data-posicao="frente">
-            <div class="icone-posicao">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline>
-              </svg>
-            </div>
-            <span>Frente</span>
-            <button class="btn-foto-pequeno">Foto</button>
-            <span class="status-foto"></span>
-          </div>
-          <div class="item-inspecao" data-posicao="direita">
-            <div class="icone-posicao">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>
-              </svg>
-            </div>
-            <span>Direita</span>
-            <button class="btn-foto-pequeno">Foto</button>
-            <span class="status-foto"></span>
-          </div>
-          <div class="item-inspecao" data-posicao="esquerda">
-            <div class="icone-posicao">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline>
-              </svg>
-            </div>
-            <span>Esquerda</span>
-            <button class="btn-foto-pequeno">Foto</button>
-            <span class="status-foto"></span>
-          </div>
-          <div class="item-inspecao" data-posicao="traseira">
-            <div class="icone-posicao">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>
-              </svg>
-            </div>
-            <span>Traseira</span>
-            <button class="btn-foto-pequeno">Foto</button>
-            <span class="status-foto"></span>
-          </div>
-          <div class="item-inspecao" data-posicao="topo">
-            <div class="icone-posicao">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="18 15 12 9 6 15"></polyline><polyline points="18 20 12 14 6 20"></polyline>
-              </svg>
-            </div>
-            <span>Topo</span>
-            <button class="btn-foto-pequeno">Foto</button>
-            <span class="status-foto"></span>
-          </div>
-        </div>
-
-        <div class="avaliacao-veiculo">
-          <h3>Condi&ccedil;&otilde;es do Ve&iacute;culo</h3>
-          <div class="radio-group">
-            <label><input type="radio" name="condicao" value="regular" /> Regular</label>
-            <label><input type="radio" name="condicao" value="irregular" /> Irregularidades</label>
-          </div>
-        </div>
-
-        <div id="painelIrregularidades" style="display: none">
-          <h4>Registrar Irregularidades</h4>
-          <div id="listaIrregularidades"></div>
-          <button id="btnAdicionarIrregularidade" class="btn-secundario">+ Adicionar Irregularidade</button>
-        </div>
+        <!-- Position cards built dynamically by JS -->
+        <div id="posicoesContainer"></div>
 
         <button id="btnFinalizarInspecao" class="btn-primary" disabled>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -121,6 +56,7 @@
       </div>
     </div>
 
+    <!-- Camera Modal -->
     <div id="modalCamera" class="modal" style="display: none">
       <div class="modal-content">
         <video id="videoCamera" autoplay playsinline></video>

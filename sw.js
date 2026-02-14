@@ -1,9 +1,8 @@
-const CACHE_NAME = "checklist-veicular-v2";
+const CACHE_NAME = "checklist-veicular-v3";
 const urlsToCache = [
   "/",
   "/index.html",
   "/empresa.html",
-  "/documentos.html",
   "/inspecao.html",
   "/conclusao.html",
   "/historico.html",

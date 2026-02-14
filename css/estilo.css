@@ -251,7 +251,7 @@ body {
   flex: 1;
   height: 3px;
   background: var(--gray-200);
-  max-width: 60px;
+  max-width: 80px;
 }
 
 .step-line.done {
@@ -299,6 +299,75 @@ select {
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 40px;
+}
+
+/* ========== SEARCHABLE SELECT ========== */
+.search-select-wrapper {
+  position: relative;
+}
+
+.search-select-wrapper input {
+  padding-right: 40px;
+}
+
+.search-select-wrapper .search-icon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-400);
+  pointer-events: none;
+}
+
+.search-results {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--white);
+  border: 2px solid var(--primary);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: var(--shadow-lg);
+}
+
+.search-result-item {
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--gray-100);
+  transition: background 0.15s;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: var(--primary-bg);
+}
+
+.search-result-item strong {
+  font-size: 0.9rem;
+  color: var(--gray-800);
+}
+
+.search-result-item span {
+  font-size: 0.8rem;
+  color: var(--gray-500);
+}
+
+.search-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 0.875rem;
 }
 
 /* ========== FEEDBACK ========== */
@@ -454,207 +523,269 @@ select {
   font-weight: 500;
 }
 
-/* ========== DOCUMENT SECTION ========== */
-.secao-documento {
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
+/* ========== POSITION CARDS ========== */
+.posicao-card {
+  background: var(--gray-50);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 16px;
-  background: var(--gray-50);
+  transition: border-color 0.2s;
 }
 
-.secao-documento h3 {
-  font-size: 0.9rem;
+.posicao-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.posicao-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--primary-bg);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.posicao-header h3 {
+  flex: 1;
+  font-size: 1rem;
   font-weight: 700;
-  color: var(--gray-700);
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  color: var(--gray-800);
 }
 
-.foto-upload {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 10px;
+.posicao-foto-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-400);
+  background: var(--gray-200);
+  padding: 3px 10px;
+  border-radius: 12px;
 }
 
-.foto-upload .btn-camera {
-  width: auto;
-  margin-bottom: 0;
-  font-size: 0.875rem;
-  padding: 10px 16px;
-}
-
-/* ========== INSPECTION GRID ========== */
-.grid-inspecao {
+/* ========== PHOTO GRID ========== */
+.fotos-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 20px 0;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
-.item-inspecao {
-  background: var(--gray-50);
-  padding: 14px 10px;
+.foto-slot {
+  aspect-ratio: 4/3;
+  border: 2px dashed var(--gray-300);
   border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--white);
+  overflow: hidden;
+  position: relative;
+}
+
+.foto-slot.vazio {
+  color: var(--gray-400);
+}
+
+.foto-slot.vazio:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-bg);
+}
+
+.foto-slot.vazio span {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.foto-slot.capturada {
+  border: 2px solid var(--success);
+  padding: 0;
+}
+
+.foto-slot.capturada img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.foto-slot.capturada span {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--white);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 0;
   text-align: center;
-  border: 2px solid var(--gray-200);
-  transition: border-color 0.2s, background 0.2s;
 }
 
-.item-inspecao.com-foto {
-  border-color: var(--success);
-  background: var(--success-light);
-}
-
-.icone-posicao {
-  font-size: 1.5rem;
+/* ========== CONDITION TOGGLE ========== */
+.condicao-section {
   margin-bottom: 4px;
 }
 
-.item-inspecao span {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--gray-600);
-  margin-bottom: 8px;
-}
-
-.btn-foto-pequeno {
-  background: var(--primary);
-  color: var(--white);
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-foto-pequeno:hover {
-  background: var(--primary-hover);
-}
-
-.status-foto {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--success);
-  min-height: 1em;
-}
-
-/* ========== VEHICLE CONDITION ========== */
-.avaliacao-veiculo {
-  margin: 20px 0;
-}
-
-.avaliacao-veiculo h3 {
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: var(--gray-700);
-}
-
-.radio-group {
+.condicao-toggle {
   display: flex;
-  gap: 12px;
-}
-
-.radio-group label {
-  flex: 1;
-  display: flex;
-  align-items: center;
   gap: 8px;
-  padding: 12px 16px;
+}
+
+.btn-condicao {
+  flex: 1;
+  padding: 10px 12px;
   border: 2px solid var(--gray-200);
   border-radius: var(--radius-sm);
+  background: var(--white);
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: border-color 0.2s, background 0.2s;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+  color: var(--gray-600);
 }
 
-.radio-group label:has(input:checked) {
-  border-color: var(--primary);
-  background: var(--primary-light);
+.btn-condicao:hover {
+  border-color: var(--gray-300);
 }
 
-.radio-group input[type="radio"] {
-  width: auto;
-  accent-color: var(--primary);
+.btn-regular.active {
+  border-color: var(--success);
+  background: var(--success-light);
+  color: var(--success);
 }
 
-/* ========== IRREGULARIDADES ========== */
-#painelIrregularidades {
-  margin: 16px 0;
-  padding: 16px;
-  background: var(--gray-50);
+.btn-irregular.active {
+  border-color: var(--danger);
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+/* ========== IRREGULARIDADES SECTION ========== */
+.irregularidades-section {
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--white);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
 }
 
-#painelIrregularidades h4 {
-  font-size: 0.9rem;
+.irr-item {
   margin-bottom: 12px;
-  color: var(--gray-700);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gray-100);
 }
 
-.linha-irregularidade {
+.irr-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.irr-item-top {
   display: flex;
   gap: 8px;
-  margin-bottom: 10px;
   align-items: center;
+  margin-bottom: 8px;
 }
 
-.linha-irregularidade select {
-  width: 120px;
-  flex-shrink: 0;
-  padding: 8px 10px;
-  font-size: 0.85rem;
-}
-
-.linha-irregularidade input {
+.irr-item-top select {
   flex: 1;
-  padding: 8px 10px;
+  padding: 8px 32px 8px 10px;
   font-size: 0.85rem;
-}
-
-.btn-remover {
-  background: var(--danger-light);
-  color: var(--danger);
-  border: 1px solid var(--danger);
-  padding: 6px 10px;
+  border: 2px solid var(--gray-200);
   border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-  font-family: inherit;
 }
 
-.btn-remover:hover {
+.btn-remover-irr {
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--danger-light);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--danger);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.btn-remover-irr:hover {
   background: var(--danger);
   color: var(--white);
+  border-color: var(--danger);
 }
 
-.btn-secundario {
+.btn-foto-irr {
+  width: 100%;
+  padding: 8px 12px;
+  border: 2px dashed var(--gray-300);
+  border-radius: 6px;
+  background: var(--gray-50);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+  color: var(--gray-500);
+}
+
+.btn-foto-irr:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-bg);
+}
+
+.btn-foto-irr.com-foto {
+  border-color: var(--success);
+  border-style: solid;
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.btn-add-irr {
   width: 100%;
   padding: 10px;
+  border: 2px dashed var(--primary-light);
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--primary);
-  border: 2px solid var(--primary);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  font-weight: 600;
   cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
   font-family: inherit;
-  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+  transition: all 0.2s;
 }
 
-.btn-secundario:hover {
+.btn-add-irr:hover {
   background: var(--primary-bg);
+  border-color: var(--primary);
 }
 
 /* ========== MODAL ========== */
@@ -837,20 +968,23 @@ select {
     padding-right: 12px;
   }
 
-  .grid-inspecao {
-    grid-template-columns: repeat(2, 1fr);
+  .fotos-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
   }
 
-  .radio-group {
+  .condicao-toggle {
     flex-direction: column;
+    gap: 6px;
   }
 
-  .linha-irregularidade {
+  .irr-item-top {
     flex-wrap: wrap;
   }
 
-  .linha-irregularidade select {
+  .irr-item-top select {
     width: 100%;
+    flex: unset;
   }
 
   .filtros {
