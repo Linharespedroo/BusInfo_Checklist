@@ -1,12 +1,12 @@
 const CONFIG = {
-  // Google Drive URLs (primary data source)
-  DRIVE_VEICULOS_URL:
-    "https://drive.google.com/uc?export=download&id=1J6NDpynIQO15GyuBZ79acxpmYjPWkXOA",
-  DRIVE_QUADRO_URL:
-    "https://drive.google.com/uc?export=download&id=1vo_96XYZY_eAccOPFnLHEGGKJtISGfCd",
+  // Google Apps Script proxy URL (deploy your own - see README)
+  // After deploying, paste the URL here. Example:
+  // APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbx.../exec",
+  APPS_SCRIPT_URL: "",
 
-  // CORS proxy (needed because Drive blocks cross-origin requests)
-  CORS_PROXY: "https://corsproxy.io/?",
+  // Google Drive file IDs
+  DRIVE_VEICULOS_ID: "1J6NDpynIQO15GyuBZ79acxpmYjPWkXOA",
+  DRIVE_MOTORISTAS_ID: "1vo_96XYZY_eAccOPFnLHEGGKJtISGfCd",
 
   // Local fallback URLs
   CPFS_URL: "/data/cpfs.json",
@@ -15,7 +15,7 @@ const CONFIG = {
   TIMER_DURACAO: 300,
   QUALIDADE_IMAGEM: 0.7,
   MAX_LARGURA_FOTO: 1280,
-  VERSAO: "2.3.0",
+  VERSAO: "2.4.0",
 
   MAX_FOTOS_POR_POSICAO: 3,
   POSICOES: ["dianteira", "lateral_direita", "lateral_esquerda", "traseira"],

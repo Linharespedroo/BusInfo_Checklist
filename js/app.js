@@ -94,7 +94,7 @@ function inicializarTimer() {
 }
 
 // ========== FETCH HELPERS ==========
-async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
+async function fetchDriveData(driveFileId, fallbackUrl, cacheKey) {
   // Try cache first
   var cached = await db.cache.get(cacheKey);
   if (cached) {
@@ -102,59 +102,40 @@ async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
     return cached;
   }
 
-  // Try Drive URL via CORS proxies (try multiple)
-  var proxies = [
-    { name: "corsproxy.io", url: "https://corsproxy.io/?" },
-    {
-      name: "allorigins",
-      url: "https://api.allorigins.win/raw?url=",
-      encode: true,
-    },
-  ];
-
-  for (var pi = 0; pi < proxies.length; pi++) {
-    var proxy = proxies[pi];
+  // Try Google Apps Script proxy (user must deploy their own)
+  if (CONFIG.APPS_SCRIPT_URL) {
     try {
-      var fetchUrl = proxy.encode
-        ? proxy.url + encodeURIComponent(driveUrl)
-        : proxy.url + driveUrl;
-      console.log(
-        "[" + cacheKey + "] Tentando proxy " + proxy.name + "...",
-      );
-      var response = await fetch(fetchUrl);
-      console.log(
-        "[" + cacheKey + "] " + proxy.name + " status:",
-        response.status,
-      );
+      var scriptUrl = CONFIG.APPS_SCRIPT_URL + "?id=" + driveFileId;
+      console.log("[" + cacheKey + "] Buscando via Google Apps Script...");
+      var response = await fetch(scriptUrl);
+      console.log("[" + cacheKey + "] Apps Script status:", response.status);
       if (response.ok) {
         var text = await response.text();
         console.log(
-          "[" + cacheKey + "] " + proxy.name + " response length:",
+          "[" + cacheKey + "] Apps Script response length:",
           text.length,
         );
         if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
           var data = JSON.parse(text);
           await db.cache.set(cacheKey, data);
           console.log(
-            "[" +
-              cacheKey +
-              "] Dados do Drive carregados via " +
-              proxy.name,
+            "[" + cacheKey + "] Dados do Drive carregados via Apps Script",
           );
           return data;
         } else {
           console.warn(
-            "[" + cacheKey + "] " + proxy.name + " retornou nao-JSON:",
+            "[" + cacheKey + "] Apps Script retornou nao-JSON:",
             text.substring(0, 200),
           );
         }
       }
     } catch (e) {
-      console.warn(
-        "[" + cacheKey + "] " + proxy.name + " falhou:",
-        e.message,
-      );
+      console.warn("[" + cacheKey + "] Apps Script falhou:", e.message);
     }
+  } else {
+    console.log(
+      "[" + cacheKey + "] APPS_SCRIPT_URL nao configurado, usando dados locais",
+    );
   }
 
   // Fallback to local file
@@ -188,7 +169,7 @@ async function initLogin() {
 
   try {
     var data = await fetchDriveData(
-      CONFIG.DRIVE_QUADRO_URL,
+      CONFIG.DRIVE_MOTORISTAS_ID,
       CONFIG.CPFS_URL,
       "motoristas",
     );
@@ -332,7 +313,7 @@ async function initEmpresa() {
 
   try {
     var data = await fetchDriveData(
-      CONFIG.DRIVE_VEICULOS_URL,
+      CONFIG.DRIVE_VEICULOS_ID,
       CONFIG.VEICULOS_URL,
       "veiculos",
     );

@@ -1,4 +1,4 @@
-const CACHE_NAME = "checklist-veicular-v4";
+const CACHE_NAME = "checklist-veicular-v5";
 const urlsToCache = [
   "/",
   "/index.html",
