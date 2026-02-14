@@ -101,10 +101,14 @@ async function fetchDriveData(driveUrl, fallbackUrl, cacheKey) {
     return cached;
   }
 
-  // Try Drive URL
+  // Try Drive URL via CORS proxy
   try {
-    console.log("[" + cacheKey + "] Buscando do Drive...");
-    var response = await fetch(driveUrl);
+    var fetchUrl = driveUrl;
+    if (CONFIG.CORS_PROXY) {
+      fetchUrl = CONFIG.CORS_PROXY + encodeURIComponent(driveUrl);
+    }
+    console.log("[" + cacheKey + "] Buscando do Drive via proxy...");
+    var response = await fetch(fetchUrl);
     console.log("[" + cacheKey + "] Drive status:", response.status);
     if (response.ok) {
       var text = await response.text();
@@ -449,19 +453,12 @@ async function initInspecao() {
     };
   });
 
-  var posicaoLabels = {
-    frente: "Frente",
-    direita: "Direita",
-    esquerda: "Esquerda",
-    traseira: "Traseira",
-  };
-
   var posicaoIcons = {
-    frente:
+    dianteira:
       '<line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline>',
-    direita:
+    lateral_direita:
       '<line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>',
-    esquerda:
+    lateral_esquerda:
       '<line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline>',
     traseira:
       '<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>',
@@ -469,6 +466,7 @@ async function initInspecao() {
 
   // Build position cards dynamically
   CONFIG.POSICOES.forEach(function (pos) {
+    var label = CONFIG.POSICAO_LABELS[pos] || pos;
     var card = document.createElement("div");
     card.className = "posicao-card";
     card.id = "posicao-" + pos;
@@ -487,6 +485,7 @@ async function initInspecao() {
         "</svg>" +
         "<span>Foto " +
         (i + 1) +
+        (i === 0 ? " *" : "") +
         "</span>" +
         "</div>";
     }
@@ -499,7 +498,7 @@ async function initInspecao() {
       "</svg>" +
       "</div>" +
       "<h3>" +
-      posicaoLabels[pos] +
+      label +
       "</h3>" +
       '<span class="posicao-foto-count" id="count-' +
       pos +
@@ -543,11 +542,51 @@ async function initInspecao() {
     container.appendChild(card);
   });
 
+  // Helper to reset a photo slot to empty state
+  function resetFotoSlot(pos, idx) {
+    var slot = container.querySelector(
+      '.foto-slot[data-pos="' + pos + '"][data-idx="' + idx + '"]',
+    );
+    if (!slot) return;
+    estado[pos].fotos[idx] = null;
+    slot.className = "foto-slot vazio";
+    slot.innerHTML =
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>' +
+      '<circle cx="12" cy="13" r="4"></circle>' +
+      "</svg>" +
+      "<span>Foto " +
+      (idx + 1) +
+      (idx === 0 ? " *" : "") +
+      "</span>";
+    updateFotoCount(pos);
+    verificarFinalizacao();
+  }
+
+  function updateFotoCount(pos) {
+    var count = estado[pos].fotos.filter(Boolean).length;
+    var countEl = document.getElementById("count-" + pos);
+    if (countEl)
+      countEl.textContent = count + "/" + CONFIG.MAX_FOTOS_POR_POSICAO;
+  }
+
   // Event delegation for all clicks inside positions container
   container.addEventListener("click", async function (e) {
-    // Photo slot click
+    // Delete photo button
+    var btnDeleteFoto = e.target.closest(".btn-delete-foto");
+    if (btnDeleteFoto) {
+      e.stopPropagation();
+      var dPos = btnDeleteFoto.dataset.pos;
+      var dIdx = parseInt(btnDeleteFoto.dataset.idx);
+      resetFotoSlot(dPos, dIdx);
+      return;
+    }
+
+    // Photo slot click (only if empty - vazio)
     var slot = e.target.closest(".foto-slot");
     if (slot) {
+      // If already captured, do nothing (use delete button)
+      if (slot.classList.contains("capturada")) return;
       var pos = slot.dataset.pos;
       var idx = parseInt(slot.dataset.idx);
       await abrirCamera(pos, idx, slot);
@@ -561,11 +600,9 @@ async function initInspecao() {
       var cVal = btnCondicao.dataset.val;
 
       var parent = btnCondicao.parentElement;
-      parent
-        .querySelectorAll(".btn-condicao")
-        .forEach(function (b) {
-          b.classList.remove("active");
-        });
+      parent.querySelectorAll(".btn-condicao").forEach(function (b) {
+        b.classList.remove("active");
+      });
       btnCondicao.classList.add("active");
 
       estado[cPos].condicao = cVal;
@@ -611,6 +648,18 @@ async function initInspecao() {
       await abrirCameraIrregularidade(fPos, fIdx);
       return;
     }
+
+    // Delete irregularity photo
+    var btnDeleteIrrFoto = e.target.closest(".btn-delete-irr-foto");
+    if (btnDeleteIrrFoto) {
+      var diPos = btnDeleteIrrFoto.dataset.pos;
+      var diIdx = parseInt(btnDeleteIrrFoto.dataset.idx);
+      estado[diPos].irregularidades[diIdx].foto = null;
+      estado[diPos].irregularidades[diIdx].fotoUrl = null;
+      renderIrregularidades(diPos);
+      verificarFinalizacao();
+      return;
+    }
   });
 
   // Handle irregularity dropdown changes
@@ -624,7 +673,7 @@ async function initInspecao() {
   });
 
   function adicionarIrregularidade(pos) {
-    estado[pos].irregularidades.push({ tipo: "", foto: null });
+    estado[pos].irregularidades.push({ tipo: "", foto: null, fotoUrl: null });
     renderIrregularidades(pos);
     verificarFinalizacao();
   }
@@ -635,6 +684,35 @@ async function initInspecao() {
 
     lista.innerHTML = estado[pos].irregularidades
       .map(function (irr, idx) {
+        var fotoSection = "";
+        if (irr.foto && irr.fotoUrl) {
+          // Show preview with delete button
+          fotoSection =
+            '<div class="irr-foto-preview">' +
+            '<img src="' +
+            irr.fotoUrl +
+            '" alt="Foto irregularidade">' +
+            '<button class="btn-delete-irr-foto" data-pos="' +
+            pos +
+            '" data-idx="' +
+            idx +
+            '" type="button">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+            "</button>" +
+            "</div>";
+        } else {
+          // Show capture button
+          fotoSection =
+            '<button class="btn-foto-irr" data-pos="' +
+            pos +
+            '" data-idx="' +
+            idx +
+            '">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>' +
+            " Tirar foto da irregularidade *" +
+            "</button>";
+        }
+
         return (
           '<div class="irr-item">' +
           '<div class="irr-item-top">' +
@@ -666,16 +744,7 @@ async function initInspecao() {
           '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
           "</button>" +
           "</div>" +
-          '<button class="btn-foto-irr ' +
-          (irr.foto ? "com-foto" : "") +
-          '" data-pos="' +
-          pos +
-          '" data-idx="' +
-          idx +
-          '">' +
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>' +
-          (irr.foto ? " Foto capturada" : " Tirar foto da irregularidade") +
-          "</button>" +
+          fotoSection +
           "</div>"
         );
       })
@@ -693,21 +762,25 @@ async function initInspecao() {
         estado[pos].fotos[idx] = blob;
         await db.fotos.salvar(checklistId, "inspecao", pos + "_" + idx, blob);
 
+        var blobUrl = URL.createObjectURL(blob);
         slotEl.classList.remove("vazio");
         slotEl.classList.add("capturada");
         slotEl.innerHTML =
           '<img src="' +
-          URL.createObjectURL(blob) +
+          blobUrl +
           '" alt="Foto">' +
           "<span>Foto " +
           (idx + 1) +
-          "</span>";
+          "</span>" +
+          '<button class="btn-delete-foto" data-pos="' +
+          pos +
+          '" data-idx="' +
+          idx +
+          '" type="button">' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+          "</button>";
 
-        // Update count
-        var count = estado[pos].fotos.filter(Boolean).length;
-        var countEl = document.getElementById("count-" + pos);
-        if (countEl) countEl.textContent = count + "/" + CONFIG.MAX_FOTOS_POR_POSICAO;
-
+        updateFotoCount(pos);
         cameraService.parar();
         modal.style.display = "none";
         verificarFinalizacao();
@@ -727,7 +800,9 @@ async function initInspecao() {
     if (await cameraService.iniciar(video)) {
       document.getElementById("btnCapturar").onclick = async function () {
         var blob = await cameraService.capturar();
+        var blobUrl = URL.createObjectURL(blob);
         estado[pos].irregularidades[idx].foto = blob;
+        estado[pos].irregularidades[idx].fotoUrl = blobUrl;
         await db.fotos.salvar(
           checklistId,
           "irregularidade",
@@ -752,7 +827,7 @@ async function initInspecao() {
 
     CONFIG.POSICOES.forEach(function (pos) {
       var st = estado[pos];
-      // Must have at least 1 photo
+      // Must have at least 1 photo per position
       if (st.fotos.filter(Boolean).length === 0) valid = false;
       // Must have condition selected
       if (!st.condicao) valid = false;
