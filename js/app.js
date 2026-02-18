@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Registrar Service Worker (force update on every load)
   if ("serviceWorker" in navigator) {
     try {
-      var reg = await navigator.serviceWorker.register("/sw.js");
+      var reg = await navigator.serviceWorker.register("sw.js");
       reg.update();
     } catch (error) {
       console.warn("Service Worker nao registrado:", error);
@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Carregar dados conforme pagina
   var pagina = window.location.pathname;
 
-  if (pagina.includes("index.html") || pagina === "/") {
+  if (pagina.includes("index.html") || pagina.endsWith("/")) {
     await initLogin();
   } else if (pagina.includes("empresa.html")) {
     await initEmpresa();
@@ -54,7 +54,7 @@ function inicializarTimer() {
   var headerEl = document.getElementById("timerHeader");
   if (
     window.location.pathname.includes("index.html") ||
-    window.location.pathname === "/"
+    window.location.pathname.endsWith("/")
   ) {
     if (headerEl) headerEl.style.display = "none";
     return;

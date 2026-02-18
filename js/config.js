@@ -10,8 +10,8 @@ const CONFIG = {
   DRIVE_MOTORISTAS_ID: "1vo_96XYZY_eAccOPFnLHEGGKJtISGfCd",
 
   // Local fallback URLs
-  CPFS_URL: "/data/cpfs.json",
-  VEICULOS_URL: "/data/veiculos.json",
+  CPFS_URL: "data/cpfs.json",
+  VEICULOS_URL: "data/veiculos.json",
 
   TIMER_DURACAO: 300,
   QUALIDADE_IMAGEM: 0.7,

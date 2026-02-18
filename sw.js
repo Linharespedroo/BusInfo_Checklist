@@ -1,19 +1,19 @@
 const CACHE_NAME = "checklist-veicular-v5";
 const urlsToCache = [
-  "/",
-  "/index.html",
-  "/empresa.html",
-  "/inspecao.html",
-  "/conclusao.html",
-  "/historico.html",
-  "/css/estilo.css",
-  "/js/config.js",
-  "/js/db.js",
-  "/js/parser.js",
-  "/js/camera.js",
-  "/js/sync.js",
-  "/js/app.js",
-  "/manifest.json",
+  "./",
+  "./index.html",
+  "./empresa.html",
+  "./inspecao.html",
+  "./conclusao.html",
+  "./historico.html",
+  "./css/estilo.css",
+  "./js/config.js",
+  "./js/db.js",
+  "./js/parser.js",
+  "./js/camera.js",
+  "./js/sync.js",
+  "./js/app.js",
+  "./manifest.json",
 ];
 
 self.addEventListener("install", (event) => {
