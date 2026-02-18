@@ -2,7 +2,8 @@ const CONFIG = {
   // Google Apps Script proxy URL (deploy your own - see README)
   // After deploying, paste the URL here. Example:
   // APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbx.../exec",
-  APPS_SCRIPT_URL: "",
+  APPS_SCRIPT_URL:
+    "https://script.google.com/macros/s/AKfycbxQReZj_xeCJkOdxzh_HDDQquTKmg-nGU0ETwDDnMMzCPgfXVVSmBz1FvQcgrCU8zh5HA/exec",
 
   // Google Drive file IDs
   DRIVE_VEICULOS_ID: "1J6NDpynIQO15GyuBZ79acxpmYjPWkXOA",
